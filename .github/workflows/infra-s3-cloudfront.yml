@@ -53,7 +53,7 @@ jobs:
           tf_version: ${{ env.tf_version }}
           tg_version: ${{ env.tg_version }}
           tg_dir: ${{ env.dev_dir }}
-          tg_command: 'hclfmt --check --diff'
+          tg_command: 'hclfmt --check --non-interactive --diff'
 
   # Security scanning for DEV environment
   security-scan-dev:
@@ -98,7 +98,7 @@ jobs:
       uses: aws-actions/configure-aws-credentials@v1
       with:
         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
-        aws-region: ${{ env.AWS_REGION }}
+        aws-region: ${{ vars.AWS_REGION }}
         role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
 
     - name: Terragrunt Plan
@@ -135,7 +135,7 @@ jobs:
       uses: aws-actions/configure-aws-credentials@v1
       with:
         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
-        aws-region: ${{ env.AWS_REGION }}
+        aws-region: ${{ vars.AWS_REGION }}
         role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
     
     - name: Download Terraform Plan
@@ -168,7 +168,7 @@ jobs:
           tf_version: ${{ env.tf_version }}
           tg_version: ${{ env.tg_version }}
           tg_dir: ${{ env.prod_dir }}
-          tg_command: 'hclfmt --check --diff'
+          tg_command: 'hclfmt --check --non-interactive --diff'
 
   # Security scanning for PROD environment
   security-scan-prod:
@@ -215,7 +215,7 @@ jobs:
       uses: aws-actions/configure-aws-credentials@v1
       with:
         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
-        aws-region: ${{ env.AWS_REGION }}
+        aws-region: ${{ vars.AWS_REGION }}
         role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
 
     - name: Terragrunt Plan
@@ -253,7 +253,7 @@ jobs:
       uses: aws-actions/configure-aws-credentials@v1
       with:
         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
-        aws-region: ${{ env.AWS_REGION }}
+        aws-region: ${{ vars.AWS_REGION }}
         role-session-name: GitHubActionsSessionForTerragruntAWSStaticWebsiteHosting-${{ steps.env_name.outputs.environment }}
     
     - name: Download Terraform Plan
