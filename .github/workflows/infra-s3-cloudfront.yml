@@ -22,7 +22,7 @@ permissions:
   security-events: write # Required for uploading SARIF results
 
 env:
-  tofu_version: 1.11.2
+  tf_version: 1.11.2
   tg_version: 0.75.6
   dev_dir: terragrunt/environments/dev/vpc
   prod_dir: terragrunt/environments/prod/vpc
@@ -39,7 +39,7 @@ jobs:
       - name: Check terragrunt HCL for DEV Environment
         uses: gruntwork-io/terragrunt-action@v2
         with:
-          tofu_version: ${{ env.tofu_version }}
+          tf_version: ${{ env.tf_version }}
           tg_version: ${{ env.tg_version }}
           tg_dir: ${{ env.dev_dir }}
           tg_command: 'hclfmt --terragrunt-check --terragrunt-diff'
@@ -93,7 +93,7 @@ jobs:
     - name: Terragrunt Plan
       uses: gruntwork-io/terragrunt-action@v2
       with:
-        tf_version: ${{ env.tofu_version }}
+        tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
         tg_dir: ${{ env.dev_dir }}
         tg_command: 'plan -out=tfplan'
@@ -136,7 +136,7 @@ jobs:
     - name: Terragrunt Apply
       uses: gruntwork-io/terragrunt-action@v2
       with:
-        tf_version: ${{ env.tofu_version }}
+        tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
         tg_dir: ${{ env.dev_dir }}
         tg_command: 'apply tfplan'
@@ -153,7 +153,7 @@ jobs:
       - name: Check terragrunt HCL for PROD Environment
         uses: gruntwork-io/terragrunt-action@v2
         with:
-          tofu_version: ${{ env.tofu_version }}
+          tf_version: ${{ env.tf_version }}
           tg_version: ${{ env.tg_version }}
           tg_dir: ${{ env.prod_dir }}
           tg_command: 'hclfmt --terragrunt-check --terragrunt-diff'
@@ -208,7 +208,7 @@ jobs:
     - name: Terragrunt Plan
       uses: gruntwork-io/terragrunt-action@v2
       with:
-        tf_version: ${{ env.tofu_version }}
+        tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
         tg_dir: ${{ env.prod_dir }}
         tg_command: 'plan -out=tfplan'
@@ -251,7 +251,7 @@ jobs:
     - name: Terragrunt Apply
       uses: gruntwork-io/terragrunt-action@v2
       with:
-        tf_version: ${{ env.tofu_version }}
+        tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
         tg_dir: ${{ env.prod_dir }}
         tg_command: 'apply tfplan'
