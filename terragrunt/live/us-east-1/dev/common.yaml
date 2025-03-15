@@ -1,0 +1,6 @@
+# Common configuration for dev environment
+tags:
+  Environment: "Dev"
+  Project: "Hippo"
+  Owner: "Juma"
+  CostCenter: "DevOps"

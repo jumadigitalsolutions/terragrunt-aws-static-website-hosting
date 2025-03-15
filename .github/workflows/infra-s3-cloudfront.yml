@@ -1,0 +1,90 @@
+name: Infrastructure - S3 CloudFront
+
+on:
+  workflow_dispatch: # Allows manually triggering the workflow
+  push: # Triggers the workflow on a push to the main branch  
+    branches: [ main ]
+    paths: # Only triggers the pipeline upon Infra code changes related to S3 and CloudFront
+      - 'terragrunt/live/*/s3-cloudfront/**'
+      - 'terragrunt/modules/s3-cloudfront/**'
+      - '.github/workflows/infra-s3-cloudfront.yml'
+  pull_request: # Same as push triggers, but for PR validation
+    branches: [ main ]
+    paths:  
+      - 'terragrunt/live/*/s3-cloudfront/**'
+      - 'terragrunt/modules/s3-cloudfront/**'
+      - '.github/workflows/infra-s3-cloudfront.yml'
+
+# Security context for AWS authentication
+permissions:
+  id-token: write  # Required for OIDC token exchange to assume AWS role
+  contents: read   # Repository access
+
+env:
+  AWS_REGION: us-east-1  # Default deployment region
+
+jobs:
+  deploy-dev:
+    name: Deploy Dev Infrastructure
+    runs-on: ubuntu-latest
+    environment: dev  # Leverage GitHub environment to deploy to dev environment, and manage environment specific variables, enabling manual approval for prod deployment
+    
+    steps:
+    - uses: actions/checkout@v3 # Checkout code
+
+    # Environment specific AWS credential setup using GitHub OIDC
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
+        aws-region: ${{ env.AWS_REGION }}
+        role-session-name: GitHubActionsSession
+
+    # Security scanning for infrastructure-as-code, checking for security vulnerabilities and misconfigurations
+    - name: Run Checkov
+      if: github.event_name == 'pull_request'  # PR validation only
+      uses: bridgecrewio/checkov-action@v2
+      with:
+        directory: terragrunt/environments/dev/s3-cloudfront
+        quiet: true  # Reduce output noise
+
+    # Infrastructure deployment, using Terragrunt to deploy the infrastructure
+    - name: Terragrunt Apply
+      uses: gruntwork-io/terragrunt-action@v2
+      with:
+        tf_version: 1.11.2  # Pinned for stability
+        tg_version: 0.75.6
+        tg_dir: terragrunt/environments/dev/s3-cloudfront
+        tg_command: 'apply -auto-approve'
+
+  # Production deployment follows the same pattern as the dev deployment
+  deploy-prod:
+    name: Deploy Prod Infrastructure
+    needs: deploy-dev  # Requires the dev deployment to succeed
+    runs-on: ubuntu-latest
+    environment: prod
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
+        aws-region: ${{ env.AWS_REGION }}
+        role-session-name: GitHubActionsSession
+
+    - name: Run Checkov
+      if: github.event_name == 'pull_request'
+      uses: bridgecrewio/checkov-action@v2
+      with:
+        directory: terragrunt/environments/prod/s3-cloudfront
+        quiet: true
+
+    - name: Terragrunt Apply
+      uses: gruntwork-io/terragrunt-action@v2
+      with:
+        tf_version: 1.11.2
+        tg_version: 0.75.6
+        tg_dir: terragrunt/environments/prod/s3-cloudfront
+        tg_command: 'apply -auto-approve'

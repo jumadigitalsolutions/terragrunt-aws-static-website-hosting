@@ -54,3 +54,6 @@ crash.*.log
 .vscode
 *.swp
 *.swo 
+
+# Cursor rules
+cursorrules
