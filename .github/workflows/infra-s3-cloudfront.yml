@@ -43,7 +43,7 @@ permissions:
 
 env:
   tf_version: 1.11.2 # Terraform version
-  tg_version: 0.75.6 # Terragrunt version     
+  tg_version: 0.75.10 # Terragrunt version     
   dev_dir: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ inputs.deploy_module }} # Terraform directory for DEV environment
   prod_dir: terragrunt/live/${{ vars.AWS_REGION }}/prod/${{ inputs.deploy_module }} # Terraform directory for PROD environment
 
