@@ -66,7 +66,7 @@ jobs:
         with:
           sarif_file: checkov-dev-results.sarif
           wait-for-processing: true
-        continue-on-error: true
+        continue-on-error: false
 
   # Plan DEV infrastructure changes
   plan-dev:
@@ -181,7 +181,7 @@ jobs:
         with:
           sarif_file: checkov-prod-results.sarif
           wait-for-processing: true
-        continue-on-error: true
+        continue-on-error: false
 
   # Plan PROD infrastructure changes
   plan-prod:
