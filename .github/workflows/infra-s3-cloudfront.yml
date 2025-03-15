@@ -31,7 +31,7 @@ jobs:
     environment: dev
     
     steps:
-    - uses: actions/checkout@v3 # Checkout code
+    - uses: actions/checkout@v4 # Checkout code
 
     # Environment specific AWS credential setup using GitHub OIDC
     - name: Configure AWS credentials
@@ -72,7 +72,7 @@ jobs:
     
     # Save plan artifact for the apply job
     - name: Upload Terraform Plan
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dev-tfplan
         path: terragrunt/environments/dev/s3-cloudfront/tfplan
@@ -85,7 +85,7 @@ jobs:
     environment: dev
     
     steps:
-    - uses: actions/checkout@v3 # Checkout code
+    - uses: actions/checkout@v4 # Checkout code
 
     # Environment specific AWS credential setup using GitHub OIDC
     - name: Configure AWS credentials
@@ -97,7 +97,7 @@ jobs:
     
     # Download the plan artifact
     - name: Download Terraform Plan
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: dev-tfplan
         path: terragrunt/environments/dev/s3-cloudfront
@@ -118,7 +118,7 @@ jobs:
     environment: prod
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
@@ -157,7 +157,7 @@ jobs:
     
     # Save plan artifact for the apply job
     - name: Upload Terraform Plan
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: prod-tfplan
         path: terragrunt/environments/prod/s3-cloudfront/tfplan
@@ -170,7 +170,7 @@ jobs:
     environment: prod
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
@@ -181,7 +181,7 @@ jobs:
     
     # Download the plan artifact
     - name: Download Terraform Plan
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: prod-tfplan
         path: terragrunt/environments/prod/s3-cloudfront
