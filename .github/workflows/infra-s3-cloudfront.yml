@@ -19,6 +19,7 @@ on:
 permissions:
   id-token: write  # Required for OIDC token exchange to assume AWS role
   contents: read   # Repository access
+  security-events: write # Required for uploading SARIF results
 
 env:
   AWS_REGION: us-east-1  # Default deployment region
@@ -27,7 +28,8 @@ jobs:
   deploy-dev:
     name: Deploy Dev Infrastructure
     runs-on: ubuntu-latest
-    environment: dev  # Leverage GitHub environment to deploy to dev environment, and manage environment specific variables, enabling manual approval for prod deployment
+    # Note: To use environments, you need to create them in GitHub repository settings first
+    environment: dev
     
     steps:
     - uses: actions/checkout@v3 # Checkout code
@@ -43,10 +45,22 @@ jobs:
     # Security scanning for infrastructure-as-code, checking for security vulnerabilities and misconfigurations
     - name: Run Checkov
       if: github.event_name == 'pull_request'  # PR validation only
-      uses: bridgecrewio/checkov-action@v2
+      uses: bridgecrewio/checkov-action@v12
       with:
         directory: terragrunt/environments/dev/s3-cloudfront
         quiet: true  # Reduce output noise
+        output_format: cli,sarif
+        output_file_path: console,checkov-results.sarif
+        soft_fail: true  # Don't fail the build on security issues
+
+    # Upload SARIF results if available
+    - name: Upload SARIF file
+      if: github.event_name == 'pull_request'
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: checkov-results.sarif
+        wait-for-processing: true
+      continue-on-error: true
 
     # Infrastructure deployment, using Terragrunt to deploy the infrastructure
     - name: Terragrunt Apply
@@ -76,10 +90,22 @@ jobs:
 
     - name: Run Checkov
       if: github.event_name == 'pull_request'
-      uses: bridgecrewio/checkov-action@v2
+      uses: bridgecrewio/checkov-action@v12
       with:
         directory: terragrunt/environments/prod/s3-cloudfront
         quiet: true
+        output_format: cli,sarif
+        output_file_path: console,checkov-results.sarif
+        soft_fail: true  # Don't fail the build on security issues
+
+    # Upload SARIF results if available
+    - name: Upload SARIF file
+      if: github.event_name == 'pull_request'
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: checkov-results.sarif
+        wait-for-processing: true
+      continue-on-error: true
 
     - name: Terragrunt Apply
       uses: gruntwork-io/terragrunt-action@v2
