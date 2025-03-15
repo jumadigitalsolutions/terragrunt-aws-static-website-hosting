@@ -2,6 +2,12 @@ name: Infrastructure - S3 CloudFront
 
 on:
   workflow_dispatch: # Allows manually triggering the workflow
+    inputs: # Declare inputs for the workflow
+      deploy_module:
+        description: 'Deploy Module'
+        required: true
+        default: 'vpc'
+
   push: # Triggers the workflow on a push to the main branch  
     branches: [ main ]
     paths: # Only triggers the pipeline upon Infra code changes related to Terragrunt and Terraform files
@@ -22,10 +28,10 @@ permissions:
   security-events: write # Required for uploading SARIF results
 
 env:
-  tf_version: 1.11.2
-  tg_version: 0.75.6
-  dev_dir: terragrunt/environments/dev/vpc
-  prod_dir: terragrunt/environments/prod/vpc
+  tf_version: 1.11.2 # Terraform version
+  tg_version: 0.75.6 # Terragrunt version     
+  dev_dir: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ inputs.deploy_module }} # Terraform directory for DEV environment
+  prod_dir: terragrunt/live/${{ vars.AWS_REGION }}/prod/${{ inputs.deploy_module }} # Terraform directory for PROD environment
 
 jobs:
   # Terragrunt HCL Format Checks for DEV Environment
