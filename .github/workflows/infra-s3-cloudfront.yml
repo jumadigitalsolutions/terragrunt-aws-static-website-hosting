@@ -3,10 +3,20 @@ name: Infrastructure - S3 CloudFront
 on:
   workflow_dispatch: # Allows manually triggering the workflow
     inputs: # Declare inputs for the workflow
+      branch:
+        description: 'Default Branch to run the workflow from'
+        required: true
+        default: 'dev' # Defaults to dev to avoid any unexpected changes to prod
+        type: string
       deploy_module:
         description: 'Deploy Module'
         required: true
         default: 'vpc'
+        type: choice
+        options:
+          - vpc
+          - s3-cloudfront
+          - ecs-fargate
 
   push: # Triggers the workflow on a push to the main branch  
     branches: [ main ]
@@ -30,8 +40,6 @@ permissions:
 env:
   tf_version: 1.11.2 # Terraform version
   tg_version: 0.75.6 # Terragrunt version     
-  dev_dir: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ inputs.deploy_module }} # Terraform directory for DEV environment
-  prod_dir: terragrunt/live/${{ vars.AWS_REGION }}/prod/${{ inputs.deploy_module }} # Terraform directory for PROD environment
 
 jobs:
   # Terragrunt HCL Format Checks for DEV Environment
@@ -42,12 +50,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set environment name
+        id: env_name
+        run: echo "environment=dev" >> $GITHUB_OUTPUT
+
       - name: Check terragrunt HCL for DEV Environment
         uses: gruntwork-io/terragrunt-action@v2
         with:
           tf_version: ${{ env.tf_version }}
           tg_version: ${{ env.tg_version }}
-          tg_dir: ${{ env.dev_dir }}
+          tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ inputs.deploy_module }}
           tg_command: 'hclfmt --terragrunt-check --terragrunt-diff'
 
   # Security scanning for DEV environment
@@ -61,7 +73,7 @@ jobs:
       - name: Run Checkov
         uses: bridgecrewio/checkov-action@v12
         with:
-          directory: ${{ env.dev_dir }}
+          directory: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ inputs.deploy_module }}
           quiet: true
           output_format: cli,sarif
           output_file_path: console,checkov-dev-results.sarif
@@ -93,7 +105,7 @@ jobs:
       uses: aws-actions/configure-aws-credentials@v1
       with:
         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
-        aws-region: ${{ env.AWS_REGION }}
+        aws-region: ${{ vars.AWS_REGION }}
         role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
 
     - name: Terragrunt Plan
@@ -101,7 +113,7 @@ jobs:
       with:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
-        tg_dir: ${{ env.dev_dir }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ inputs.deploy_module }}
         tg_comment: true
         tg_command: 'plan -out=tfplan'
     
@@ -109,7 +121,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: dev-tfplan
-        path: ${{ env.dev_dir }}/tfplan
+        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ inputs.deploy_module }}/tfplan
         retention-days: 1
 
   # Apply DEV infrastructure changes
@@ -131,21 +143,21 @@ jobs:
       uses: aws-actions/configure-aws-credentials@v1
       with:
         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
-        aws-region: ${{ env.AWS_REGION }}
+        aws-region: ${{ vars.AWS_REGION }}
         role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
     
     - name: Download Terraform Plan
       uses: actions/download-artifact@v4
       with:
         name: dev-tfplan
-        path: ${{ env.dev_dir }}
+        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ inputs.deploy_module }}
 
     - name: Terragrunt Apply
       uses: gruntwork-io/terragrunt-action@v2
       with:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
-        tg_dir: ${{ env.dev_dir }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ inputs.deploy_module }}
         tg_command: 'apply tfplan'
 
   # Terragrunt HCL Format Checks for PROD Environment
@@ -162,7 +174,7 @@ jobs:
         with:
           tf_version: ${{ env.tf_version }}
           tg_version: ${{ env.tg_version }}
-          tg_dir: ${{ env.prod_dir }}
+          tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/prod/${{ inputs.deploy_module }}
           tg_command: 'hclfmt --terragrunt-check --terragrunt-diff'
 
   # Security scanning for PROD environment
@@ -177,7 +189,7 @@ jobs:
       - name: Run Checkov
         uses: bridgecrewio/checkov-action@v12
         with:
-          directory: ${{ env.prod_dir }}
+          directory: terragrunt/live/${{ vars.AWS_REGION }}/prod/${{ inputs.deploy_module }}
           quiet: true
           output_format: cli,sarif
           output_file_path: console,checkov-prod-results.sarif
@@ -209,7 +221,7 @@ jobs:
       uses: aws-actions/configure-aws-credentials@v1
       with:
         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
-        aws-region: ${{ env.AWS_REGION }}
+        aws-region: ${{ vars.AWS_REGION }}
         role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
 
     - name: Terragrunt Plan
@@ -217,7 +229,7 @@ jobs:
       with:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
-        tg_dir: ${{ env.prod_dir }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ inputs.deploy_module }}
         tg_comment: true
         tg_command: 'plan -out=tfplan'
     
@@ -225,7 +237,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: prod-tfplan
-        path: ${{ env.prod_dir }}/tfplan
+        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ inputs.deploy_module }}/tfplan
         retention-days: 1
 
   # Apply PROD infrastructure changes
@@ -247,19 +259,19 @@ jobs:
       uses: aws-actions/configure-aws-credentials@v1
       with:
         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
-        aws-region: ${{ env.AWS_REGION }}
-        role-session-name: GitHubActionsSessionForTerragruntAWSStaticWebsiteHosting-${{ steps.env_name.outputs.environment }}
+        aws-region: ${{ vars.AWS_REGION }}
+        role-session-name: GitHubActionsSession-${{ steps.env_name.outputs.environment }}
     
     - name: Download Terraform Plan
       uses: actions/download-artifact@v4
       with:
         name: prod-tfplan
-        path: ${{ env.prod_dir }}
+        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ inputs.deploy_module }}
 
     - name: Terragrunt Apply
       uses: gruntwork-io/terragrunt-action@v2
       with:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
-        tg_dir: ${{ env.prod_dir }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ inputs.deploy_module }}
         tg_command: 'apply tfplan'
