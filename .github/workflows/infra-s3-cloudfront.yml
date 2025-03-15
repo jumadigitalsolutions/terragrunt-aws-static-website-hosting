@@ -108,6 +108,15 @@ jobs:
       id: env_name
       run: echo "environment=dev" >> $GITHUB_OUTPUT
 
+    - name: Debug directory structure
+      run: |
+        echo "Working directory: $(pwd)"
+        ls -la
+        echo "Checking terragrunt directories:"
+        find terragrunt -type d | sort
+        echo "Looking for terragrunt.hcl files:"
+        find terragrunt -name "terragrunt.hcl" | sort
+
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
@@ -120,7 +129,7 @@ jobs:
       with:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
-        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ inputs.deploy_module }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION || 'us-east-1' }}/${{ steps.env_name.outputs.environment }}/${{ inputs.deploy_module }}
         tg_comment: true
         tg_command: 'plan -out=tfplan'
     
@@ -128,7 +137,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: dev-tfplan
-        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ inputs.deploy_module }}/tfplan
+        path: terragrunt/live/${{ vars.AWS_REGION || 'us-east-1' }}/${{ steps.env_name.outputs.environment }}/${{ inputs.deploy_module }}/tfplan
         retention-days: 1
 
   # Apply DEV infrastructure changes
@@ -145,6 +154,15 @@ jobs:
       id: env_name
       run: echo "environment=dev" >> $GITHUB_OUTPUT
 
+    - name: Debug directory structure
+      run: |
+        echo "Working directory: $(pwd)"
+        ls -la
+        echo "Checking terragrunt directories:"
+        find terragrunt -type d | sort
+        echo "Looking for terragrunt.hcl files:"
+        find terragrunt -name "terragrunt.hcl" | sort
+
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
@@ -156,14 +174,14 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: dev-tfplan
-        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ inputs.deploy_module }}
+        path: terragrunt/live/${{ vars.AWS_REGION || 'us-east-1' }}/${{ steps.env_name.outputs.environment }}/${{ inputs.deploy_module }}
 
     - name: Terragrunt Apply
       uses: gruntwork-io/terragrunt-action@v2
       with:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
-        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ inputs.deploy_module }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION || 'us-east-1' }}/${{ steps.env_name.outputs.environment }}/${{ inputs.deploy_module }}
         tg_command: 'apply tfplan'
 
   # Terragrunt HCL Format Checks for PROD Environment
