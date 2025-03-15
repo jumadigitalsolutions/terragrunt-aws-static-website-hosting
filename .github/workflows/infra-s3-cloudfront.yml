@@ -25,10 +25,9 @@ env:
   AWS_REGION: us-east-1  # Default deployment region
 
 jobs:
-  deploy-dev:
-    name: Deploy Dev Infrastructure
+  plan-dev:
+    name: Plan Dev Infrastructure
     runs-on: ubuntu-latest
-    # Note: To use environments, you need to create them in GitHub repository settings first
     environment: dev
     
     steps:
@@ -62,6 +61,47 @@ jobs:
         wait-for-processing: true
       continue-on-error: true
 
+    # Generate Terragrunt plan
+    - name: Terragrunt Plan
+      uses: gruntwork-io/terragrunt-action@v2
+      with:
+        tf_version: 1.11.2  # Pinned for stability
+        tg_version: 0.75.6
+        tg_dir: terragrunt/environments/dev/s3-cloudfront
+        tg_command: 'plan -out=tfplan'
+    
+    # Save plan artifact for the apply job
+    - name: Upload Terraform Plan
+      uses: actions/upload-artifact@v3
+      with:
+        name: dev-tfplan
+        path: terragrunt/environments/dev/s3-cloudfront/tfplan
+        retention-days: 1
+
+  apply-dev:
+    name: Apply Dev Infrastructure
+    needs: plan-dev
+    runs-on: ubuntu-latest
+    environment: dev
+    
+    steps:
+    - uses: actions/checkout@v3 # Checkout code
+
+    # Environment specific AWS credential setup using GitHub OIDC
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
+        aws-region: ${{ env.AWS_REGION }}
+        role-session-name: GitHubActionsSession
+    
+    # Download the plan artifact
+    - name: Download Terraform Plan
+      uses: actions/download-artifact@v3
+      with:
+        name: dev-tfplan
+        path: terragrunt/environments/dev/s3-cloudfront
+
     # Infrastructure deployment, using Terragrunt to deploy the infrastructure
     - name: Terragrunt Apply
       uses: gruntwork-io/terragrunt-action@v2
@@ -69,12 +109,11 @@ jobs:
         tf_version: 1.11.2  # Pinned for stability
         tg_version: 0.75.6
         tg_dir: terragrunt/environments/dev/s3-cloudfront
-        tg_command: 'apply -auto-approve'
+        tg_command: 'apply tfplan'
 
-  # Production deployment follows the same pattern as the dev deployment
-  deploy-prod:
-    name: Deploy Prod Infrastructure
-    needs: deploy-dev  # Requires the dev deployment to succeed
+  plan-prod:
+    name: Plan Prod Infrastructure
+    needs: apply-dev  # Requires the dev deployment to succeed
     runs-on: ubuntu-latest
     environment: prod
     
@@ -107,10 +146,51 @@ jobs:
         wait-for-processing: true
       continue-on-error: true
 
+    # Generate Terragrunt plan
+    - name: Terragrunt Plan
+      uses: gruntwork-io/terragrunt-action@v2
+      with:
+        tf_version: 1.11.2
+        tg_version: 0.75.6
+        tg_dir: terragrunt/environments/prod/s3-cloudfront
+        tg_command: 'plan -out=tfplan'
+    
+    # Save plan artifact for the apply job
+    - name: Upload Terraform Plan
+      uses: actions/upload-artifact@v3
+      with:
+        name: prod-tfplan
+        path: terragrunt/environments/prod/s3-cloudfront/tfplan
+        retention-days: 1
+
+  apply-prod:
+    name: Apply Prod Infrastructure
+    needs: plan-prod
+    runs-on: ubuntu-latest
+    environment: prod
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
+        aws-region: ${{ env.AWS_REGION }}
+        role-session-name: GitHubActionsSessionForTerragruntAWSStaticWebsiteHosting
+    
+    # Download the plan artifact
+    - name: Download Terraform Plan
+      uses: actions/download-artifact@v3
+      with:
+        name: prod-tfplan
+        path: terragrunt/environments/prod/s3-cloudfront
+
+    # Infrastructure deployment, using Terragrunt to deploy the infrastructure
     - name: Terragrunt Apply
       uses: gruntwork-io/terragrunt-action@v2
       with:
         tf_version: 1.11.2
         tg_version: 0.75.6
         tg_dir: terragrunt/environments/prod/s3-cloudfront
-        tg_command: 'apply -auto-approve'
+        tg_command: 'apply tfplan'
