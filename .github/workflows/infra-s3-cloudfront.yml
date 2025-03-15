@@ -22,7 +22,6 @@ permissions:
   security-events: write # Required for uploading SARIF results
 
 env:
-  AWS_REGION: us-east-1  # Default deployment region
   tofu_version: 1.11.2
   tg_version: 0.75.6
   dev_dir: terragrunt/environments/dev/vpc
