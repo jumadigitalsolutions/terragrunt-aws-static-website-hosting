@@ -33,13 +33,14 @@ on:
 
 # Security context for AWS authentication
 permissions:
-  security-events: write
-  pull-requests: read
-  contents: write
-  id-token: write
-  statuses: write
-  actions: read
-  pages: write
+  security-events: write    # Required for uploading SARIF results
+  pull-requests: read       # Required for PR comments
+  contents: write           # Required for checkout
+  id-token: write           # Required for OIDC AWS auth
+  statuses: write           # Required for commit statuses
+  actions: read             # Required for workflow runs
+  pages: write              # For documentation if needed
+  checks: write             # Required for detailed SARIF results
 
 env:
   tf_version: 1.11.2 # Terraform version
@@ -285,7 +286,7 @@ jobs:
       uses: aws-actions/configure-aws-credentials@v1
       with:
         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
-        aws-region: ${{ env.AWS_REGION }}
+        aws-region: ${{ vars.AWS_REGION }}
         role-session-name: GitHubActionsSessionForTerragruntAWSStaticWebsiteHosting-${{ steps.env_name.outputs.environment }}
     
     - name: Download Terraform Plan
