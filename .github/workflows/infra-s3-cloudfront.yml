@@ -99,7 +99,7 @@ jobs:
       with:
         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
         aws-region: ${{ vars.AWS_REGION }}
-        role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
+        role-session-name: GitHubActionsTerragruntAWSStaticWebsiteHosting-${{ steps.env_name.outputs.environment }}
 
     - name: Terragrunt Plan
       uses: gruntwork-io/terragrunt-action@v2
