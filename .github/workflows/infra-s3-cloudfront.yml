@@ -23,6 +23,7 @@ on:
 
 # Security context for AWS authentication
 permissions:
+  actions: read # Required for actions/checkout@v4
   id-token: write  # Required for OIDC token exchange to assume AWS role
   contents: read   # Repository access
   security-events: write # Required for uploading SARIF results
