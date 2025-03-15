@@ -23,16 +23,19 @@ on:
 
 # Security context for AWS authentication
 permissions:
-  actions: read # Required for actions/checkout@v4
-  id-token: write  # Required for OIDC token exchange to assume AWS role
-  contents: read   # Repository access
-  security-events: write # Required for uploading SARIF results
+  security-events: write
+  pull-requests: read
+  contents: write
+  id-token: write
+  statuses: write
+  actions: read
+  pages: write
 
 env:
   tf_version: 1.11.2 # Terraform version
   tg_version: 0.75.6 # Terragrunt version     
-  dev_dir: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ inputs.deploy_module }} # Terraform directory for DEV environment
-  prod_dir: terragrunt/live/${{ vars.AWS_REGION }}/prod/${{ inputs.deploy_module }} # Terraform directory for PROD environment
+  dev_dir: terragrunt/live/${{ vars.AWS_REGION || 'us-east-1' }}/dev/${{ inputs.deploy_module || 'vpc' }} # Terraform directory for DEV environment
+  prod_dir: terragrunt/live/${{ vars.AWS_REGION || 'us-east-1' }}/prod/${{ inputs.deploy_module || 'vpc' }} # Terraform directory for PROD environment
 
 jobs: 
   # Terragrunt HCL Format Checks for DEV Environment
@@ -50,7 +53,7 @@ jobs:
           tf_version: ${{ env.tf_version }}
           tg_version: ${{ env.tg_version }}
           tg_dir: ${{ env.dev_dir }}
-          tg_command: 'hclfmt --terragrunt-check --terragrunt-diff'
+          tg_command: 'hclfmt --check --diff'
 
   # Security scanning for DEV environment
   security-scan-dev:
@@ -165,7 +168,7 @@ jobs:
           tf_version: ${{ env.tf_version }}
           tg_version: ${{ env.tg_version }}
           tg_dir: ${{ env.prod_dir }}
-          tg_command: 'hclfmt --terragrunt-check --terragrunt-diff'
+          tg_command: 'hclfmt --check --diff'
 
   # Security scanning for PROD environment
   security-scan-prod:
