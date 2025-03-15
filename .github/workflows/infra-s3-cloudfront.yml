@@ -10,7 +10,7 @@ on:
         type: string
       deploy_module:
         description: 'Deploy Module'
-        required: true
+        required: false
         default: 'vpc'
         type: choice
         options:
@@ -39,6 +39,7 @@ permissions:
 
 env:
   tf_version: 1.11.2 # Terraform version
+  deploy_module: ${{ inputs.deploy_module }} || 'vpc'
   tg_version: 0.75.6 # Terragrunt version     
 
 jobs:
