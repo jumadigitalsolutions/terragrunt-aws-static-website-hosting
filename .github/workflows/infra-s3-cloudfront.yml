@@ -23,9 +23,40 @@ permissions:
 
 env:
   AWS_REGION: us-east-1  # Default deployment region
+  tofu_version: 1.11.2
+  tg_version: 0.75.6
 
 jobs:
+  # Terragrunt HCL Format Checks and Diff Checks for DEV and PROD Environments on PRs
+  checks:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@main
+
+      - name: Check terragrunt HCL for DEV Environment
+        uses: gruntwork-io/terragrunt-action@v2
+        env:
+          working_dir: terragrunt/environments/dev/s3-cloudfront
+        with:
+          tofu_version: ${{ env.tofu_version }}
+          tg_version: ${{ env.tg_version }}
+          tg_dir: ${{ env.working_dir }}
+          tg_command: 'hclfmt --terragrunt-check --terragrunt-diff'
+
+      - name: Check terragrunt HCL for PROD Environment
+        uses: gruntwork-io/terragrunt-action@v2
+        env:
+          working_dir: terragrunt/environments/prod/s3-cloudfront
+        with:
+          tofu_version: ${{ env.tofu_version }}
+          tg_version: ${{ env.tg_version }}
+          tg_dir: ${{ env.working_dir }}
+          tg_command: 'hclfmt --terragrunt-check --terragrunt-diff'
+
   plan-dev:
+    needs: [checks]
     name: Plan Dev Infrastructure
     runs-on: ubuntu-latest
     environment: dev
@@ -80,7 +111,7 @@ jobs:
 
   apply-dev:
     name: Apply Dev Infrastructure
-    needs: plan-dev
+    needs: [plan-dev]
     runs-on: ubuntu-latest
     environment: dev
     
