@@ -96,6 +96,7 @@ jobs:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
         tg_dir: ${{ env.dev_dir }}
+        tg_comment: true
         tg_command: 'plan -out=tfplan'
     
     - name: Upload Terraform Plan
@@ -211,6 +212,7 @@ jobs:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
         tg_dir: ${{ env.prod_dir }}
+        tg_comment: true
         tg_command: 'plan -out=tfplan'
     
     - name: Upload Terraform Plan
