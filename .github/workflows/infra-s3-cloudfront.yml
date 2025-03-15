@@ -5,15 +5,15 @@ on:
   push: # Triggers the workflow on a push to the main branch  
     branches: [ main ]
     paths: # Only triggers the pipeline upon Infra code changes related to S3 and CloudFront
-      - 'terragrunt/live/*/s3-cloudfront/**'
-      - 'terragrunt/modules/s3-cloudfront/**'
-      - '.github/workflows/infra-s3-cloudfront.yml'
+      - 'terragrunt/live/*/vpc/**'
+      - 'terragrunt/modules/vpc/**'
+      - '.github/workflows/infra-vpc.yml'
   pull_request: # Same as push triggers, but for PR validation
     branches: [ main ]
     paths:  
-      - 'terragrunt/live/*/s3-cloudfront/**'
-      - 'terragrunt/modules/s3-cloudfront/**'
-      - '.github/workflows/infra-s3-cloudfront.yml'
+      - 'terragrunt/live/*/vpc/**'
+      - 'terragrunt/modules/vpc/**'
+      - '.github/workflows/infra-vpc.yml'
 
 # Security context for AWS authentication
 permissions:
@@ -25,90 +25,133 @@ env:
   AWS_REGION: us-east-1  # Default deployment region
   tofu_version: 1.11.2
   tg_version: 0.75.6
+  dev_dir: terragrunt/environments/dev/vpc
+  prod_dir: terragrunt/environments/prod/vpc
 
 jobs:
-  # Terragrunt HCL Format Checks and Diff Checks for DEV and PROD Environments on PRs
-  checks:
+  # Terragrunt HCL Format Checks for DEV Environment
+  check-dev-code:
+    name: Check Dev Infrastructure Code
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     steps:
-      - name: 'Checkout'
-        uses: actions/checkout@main
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Check terragrunt HCL for DEV Environment
         uses: gruntwork-io/terragrunt-action@v2
-        env:
-          working_dir: terragrunt/environments/dev/s3-cloudfront
         with:
           tofu_version: ${{ env.tofu_version }}
           tg_version: ${{ env.tg_version }}
-          tg_dir: ${{ env.working_dir }}
+          tg_dir: ${{ env.dev_dir }}
           tg_command: 'hclfmt --terragrunt-check --terragrunt-diff'
+
+  # Terragrunt HCL Format Checks for PROD Environment
+  check-prod-code:
+    name: Check Prod Infrastructure Code
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Check terragrunt HCL for PROD Environment
         uses: gruntwork-io/terragrunt-action@v2
-        env:
-          working_dir: terragrunt/environments/prod/s3-cloudfront
         with:
           tofu_version: ${{ env.tofu_version }}
           tg_version: ${{ env.tg_version }}
-          tg_dir: ${{ env.working_dir }}
+          tg_dir: ${{ env.prod_dir }}
           tg_command: 'hclfmt --terragrunt-check --terragrunt-diff'
 
+  # Security scanning for DEV environment
+  security-scan-dev:
+    name: Security Scan Dev
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: [check-dev-code]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: ${{ env.dev_dir }}
+          quiet: true
+          output_format: cli,sarif
+          output_file_path: console,checkov-dev-results.sarif
+          soft_fail: true
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: checkov-dev-results.sarif
+          wait-for-processing: true
+        continue-on-error: true
+
+  # Security scanning for PROD environment
+  security-scan-prod:
+    name: Security Scan Prod
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    needs: [check-prod-code]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: ${{ env.prod_dir }}
+          quiet: true
+          output_format: cli,sarif
+          output_file_path: console,checkov-prod-results.sarif
+          soft_fail: true
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: checkov-prod-results.sarif
+          wait-for-processing: true
+        continue-on-error: true
+
+  # Plan DEV infrastructure changes
   plan-dev:
-    needs: [checks]
     name: Plan Dev Infrastructure
     runs-on: ubuntu-latest
     environment: dev
+    needs: [check-dev-code]
+    if: always() && (needs.check-dev-code.result == 'success' || github.event_name == 'workflow_dispatch')
     
     steps:
-    - uses: actions/checkout@v4 # Checkout code
+    - name: Checkout
+      uses: actions/checkout@v4
 
-    # Environment specific AWS credential setup using GitHub OIDC
+    - name: Set environment name
+      id: env_name
+      run: echo "environment=dev" >> $GITHUB_OUTPUT
+
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
         aws-region: ${{ env.AWS_REGION }}
-        role-session-name: GitHubActionsSession
+        role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
 
-    # Security scanning for infrastructure-as-code, checking for security vulnerabilities and misconfigurations
-    - name: Run Checkov
-      if: github.event_name == 'pull_request'  # PR validation only
-      uses: bridgecrewio/checkov-action@v12
-      with:
-        directory: terragrunt/environments/dev/s3-cloudfront
-        quiet: true  # Reduce output noise
-        output_format: cli,sarif
-        output_file_path: console,checkov-results.sarif
-        soft_fail: true  # Don't fail the build on security issues
-
-    # Upload SARIF results if available
-    - name: Upload SARIF file
-      if: github.event_name == 'pull_request'
-      uses: github/codeql-action/upload-sarif@v2
-      with:
-        sarif_file: checkov-results.sarif
-        wait-for-processing: true
-      continue-on-error: true
-
-    # Generate Terragrunt plan
     - name: Terragrunt Plan
       uses: gruntwork-io/terragrunt-action@v2
       with:
-        tf_version: 1.11.2  # Pinned for stability
-        tg_version: 0.75.6
-        tg_dir: terragrunt/environments/dev/s3-cloudfront
+        tf_version: ${{ env.tofu_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_dir: ${{ env.dev_dir }}
         tg_command: 'plan -out=tfplan'
     
-    # Save plan artifact for the apply job
     - name: Upload Terraform Plan
       uses: actions/upload-artifact@v4
       with:
         name: dev-tfplan
-        path: terragrunt/environments/dev/s3-cloudfront/tfplan
+        path: ${{ env.dev_dir }}/tfplan
         retention-days: 1
 
+  # Apply DEV infrastructure changes
   apply-dev:
     name: Apply Dev Infrastructure
     needs: [plan-dev]
@@ -116,112 +159,104 @@ jobs:
     environment: dev
     
     steps:
-    - uses: actions/checkout@v4 # Checkout code
+    - name: Checkout
+      uses: actions/checkout@v4
 
-    # Environment specific AWS credential setup using GitHub OIDC
+    - name: Set environment name
+      id: env_name
+      run: echo "environment=dev" >> $GITHUB_OUTPUT
+
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
         aws-region: ${{ env.AWS_REGION }}
-        role-session-name: GitHubActionsSession
+        role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
     
-    # Download the plan artifact
     - name: Download Terraform Plan
       uses: actions/download-artifact@v4
       with:
         name: dev-tfplan
-        path: terragrunt/environments/dev/s3-cloudfront
+        path: ${{ env.dev_dir }}
 
-    # Infrastructure deployment, using Terragrunt to deploy the infrastructure
     - name: Terragrunt Apply
       uses: gruntwork-io/terragrunt-action@v2
       with:
-        tf_version: 1.11.2  # Pinned for stability
-        tg_version: 0.75.6
-        tg_dir: terragrunt/environments/dev/s3-cloudfront
+        tf_version: ${{ env.tofu_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_dir: ${{ env.dev_dir }}
         tg_command: 'apply tfplan'
 
+  # Plan PROD infrastructure changes
   plan-prod:
     name: Plan Prod Infrastructure
-    needs: apply-dev  # Requires the dev deployment to succeed
+    needs: [apply-dev, check-prod-code]
     runs-on: ubuntu-latest
     environment: prod
+    if: always() && (needs.apply-dev.result == 'success' && (needs.check-prod-code.result == 'success' || github.event_name == 'workflow_dispatch'))
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set environment name
+      id: env_name
+      run: echo "environment=prod" >> $GITHUB_OUTPUT
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
         aws-region: ${{ env.AWS_REGION }}
-        role-session-name: GitHubActionsSessionForTerragruntAWSStaticWebsiteHosting
+        role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
 
-    - name: Run Checkov
-      if: github.event_name == 'pull_request'
-      uses: bridgecrewio/checkov-action@v12
-      with:
-        directory: terragrunt/environments/prod/s3-cloudfront
-        quiet: true
-        output_format: cli,sarif
-        output_file_path: console,checkov-results.sarif
-        soft_fail: true  # Don't fail the build on security issues
-
-    # Upload SARIF results if available
-    - name: Upload SARIF file
-      if: github.event_name == 'pull_request'
-      uses: github/codeql-action/upload-sarif@v2
-      with:
-        sarif_file: checkov-results.sarif
-        wait-for-processing: true
-      continue-on-error: true
-
-    # Generate Terragrunt plan
     - name: Terragrunt Plan
       uses: gruntwork-io/terragrunt-action@v2
       with:
-        tf_version: 1.11.2
-        tg_version: 0.75.6
-        tg_dir: terragrunt/environments/prod/s3-cloudfront
+        tf_version: ${{ env.tofu_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_dir: ${{ env.prod_dir }}
         tg_command: 'plan -out=tfplan'
     
-    # Save plan artifact for the apply job
     - name: Upload Terraform Plan
       uses: actions/upload-artifact@v4
       with:
         name: prod-tfplan
-        path: terragrunt/environments/prod/s3-cloudfront/tfplan
+        path: ${{ env.prod_dir }}/tfplan
         retention-days: 1
 
+  # Apply PROD infrastructure changes
   apply-prod:
     name: Apply Prod Infrastructure
-    needs: plan-prod
+    needs: [plan-prod]
     runs-on: ubuntu-latest
     environment: prod
     
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set environment name
+      id: env_name
+      run: echo "environment=prod" >> $GITHUB_OUTPUT
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
         aws-region: ${{ env.AWS_REGION }}
-        role-session-name: GitHubActionsSessionForTerragruntAWSStaticWebsiteHosting
+        role-session-name: GitHubActionsSessionForTerragruntAWSStaticWebsiteHosting-${{ steps.env_name.outputs.environment }}
     
-    # Download the plan artifact
     - name: Download Terraform Plan
       uses: actions/download-artifact@v4
       with:
         name: prod-tfplan
-        path: terragrunt/environments/prod/s3-cloudfront
+        path: ${{ env.prod_dir }}
 
-    # Infrastructure deployment, using Terragrunt to deploy the infrastructure
     - name: Terragrunt Apply
       uses: gruntwork-io/terragrunt-action@v2
       with:
-        tf_version: 1.11.2
-        tg_version: 0.75.6
-        tg_dir: terragrunt/environments/prod/s3-cloudfront
+        tf_version: ${{ env.tofu_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_dir: ${{ env.prod_dir }}
         tg_command: 'apply tfplan'
