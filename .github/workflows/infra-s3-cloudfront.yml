@@ -9,13 +9,13 @@ on:
         default: 'vpc'
 
   push: # Triggers the workflow on a push to the main branch  
-    branches: [ main ]
+    branches: [ main, dev ]
     paths: # Only triggers the pipeline upon Infra code changes related to Terragrunt and Terraform files
       - 'terragrunt/live/**'
       - 'terragrunt/modules/**'
       - '.github/workflows/infra-s3-cloudfront.yml'
   pull_request: # Same as push triggers, but for PR validation
-    branches: [ main ]
+    branches: [ main, dev ]
     paths:  
       - 'terragrunt/live/**'
       - 'terragrunt/modules/**'
@@ -33,11 +33,12 @@ env:
   dev_dir: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ inputs.deploy_module }} # Terraform directory for DEV environment
   prod_dir: terragrunt/live/${{ vars.AWS_REGION }}/prod/${{ inputs.deploy_module }} # Terraform directory for PROD environment
 
-jobs:
+jobs: 
   # Terragrunt HCL Format Checks for DEV Environment
   check-dev-code:
     name: Check Dev Infrastructure Code
     runs-on: ubuntu-latest
+    environment: dev
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -54,6 +55,7 @@ jobs:
   security-scan-dev:
     name: Security Scan Dev
     runs-on: ubuntu-latest
+    environment: dev
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -80,7 +82,6 @@ jobs:
     runs-on: ubuntu-latest
     environment: dev
     needs: [check-dev-code, security-scan-dev]
-    
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -118,7 +119,6 @@ jobs:
     needs: [plan-dev]
     runs-on: ubuntu-latest
     environment: dev
-    
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -153,6 +153,7 @@ jobs:
     name: Check Prod Infrastructure Code
     runs-on: ubuntu-latest
     needs: [apply-dev]  # Only start after dev environment is fully deployed
+    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -170,6 +171,7 @@ jobs:
     name: Security Scan Prod
     runs-on: ubuntu-latest
     needs: [apply-dev]  # Only start after dev environment is fully deployed
+    if: github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -196,7 +198,7 @@ jobs:
     needs: [check-prod-code, security-scan-prod]  # Wait for both prod checks to complete
     runs-on: ubuntu-latest
     environment: prod
-    
+    if: github.ref == 'refs/heads/main'
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -234,7 +236,7 @@ jobs:
     needs: [plan-prod]
     runs-on: ubuntu-latest
     environment: prod
-    
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     steps:
     - name: Checkout
       uses: actions/checkout@v4
