@@ -1,0 +1,49 @@
+<!-- HTML file for the Hippo Assessment -->
+<!-- This file is served by the Nginx container -->
+<!-- It displays a simple message to indicate that the assessment has been completed -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hippo Assessment</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f8ff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            flex-direction: column;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #4a86e8;
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .emoji {
+            font-size: 5rem;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Hippo Assessment Completed!</h1>
+        <div class="emoji">🎉</div>
+        <div style="margin-top: 2rem; font-size: 0.8rem; color: #666;">
+            <p>Version: 1.0.0 | Date: Mar 12, 2025 | Author: Guilherme Ramos Gouveia</p>
+            <p>Hippo DevOps Assessment</p>
+        </div>
+    </div>
+</body>
+</html> 
