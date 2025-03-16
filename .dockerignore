@@ -1,0 +1,51 @@
+# Version control
+.git
+.gitignore
+
+# Terraform/Terragrunt files
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfvars
+terragrunt/
+.terragrunt-cache
+
+# GitHub Actions
+.github/
+
+# Environment files
+.env
+.envrc
+.env.*
+
+# Development tools
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+*.md
+
+# Docker files (except Dockerfile)
+docker-compose.yml
+.dockerignore
+
+# Node.js (if used)
+node_modules/
+npm-debug.log
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+
+# Test files
+**/test/
+**/tests/
+**/__tests__/ 

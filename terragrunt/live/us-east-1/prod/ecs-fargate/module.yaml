@@ -1,0 +1,11 @@
+# ECS Fargate specific configuration for prod
+cluster_name: "hippo-cluster-prod"
+service_name: "hippo-service-prod"
+task_family: "hippo-task-prod"
+container_name: "hippo-container"
+container_port: 80
+desired_count: 4
+cpu: 512
+memory: 1024
+health_check_path: "/health"
+health_check_port: 80 

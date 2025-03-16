@@ -1,0 +1,32 @@
+{
+  "family": "hippo-website-dev",
+  "networkMode": "awsvpc",
+  "executionRoleArn": "arn:aws:iam::__AWS_ACCOUNT_ID__:role/hippo-ecs-task-execution-role-dev",
+  "containerDefinitions": [
+    {
+      "name": "hippo-website",
+      "image": "__ECR_REPOSITORY__:__IMAGE_TAG__",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 80,
+          "hostPort": 80,
+          "protocol": "tcp"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/hippo-website-dev",
+          "awslogs-region": "__AWS_REGION__",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ],
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "256",
+  "memory": "512"
+} 
