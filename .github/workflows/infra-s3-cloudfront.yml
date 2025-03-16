@@ -64,8 +64,8 @@ jobs:
           deploy_module: ${{ inputs.deploy_module }}
           branch: ${{ inputs.branch }}
         run: |
-          echo "${deploy_module:-vpc}" >> $GITHUB_OUTPUT
-          echo "${branch:-dev}" >> $GITHUB_OUTPUT
+          echo "${inputs.deploy_module:-vpc}" >> $GITHUB_OUTPUT
+          echo "${inputs.branch:-dev}" >> $GITHUB_OUTPUT
 
   # Terragrunt HCL Format Checks for DEV Environment
   check-dev-code:
