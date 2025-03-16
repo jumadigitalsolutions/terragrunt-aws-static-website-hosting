@@ -4,6 +4,19 @@ This repository demonstrates two different approaches for hosting static website
 
 Check out the Medium Article I published on this topic: [AWS Static Website Hosting Solutions](https://medium.jumads.com/aws-static-website-hosting-solutions-7b3b3b3b3b3b) comparing the solutions in-depth, including cost analysis, security considerations, and deployment strategies.
 
+## Documentation
+
+- [Infrastructure as Code](docs/iac.md)
+  - [S3 + CloudFront Detailed Guide](docs/s3-cloudfront.md)
+  - [ECS + Fargate Detailed Guide](docs/ecs-fargate.md)
+- [Multi-Account Strategy](docs/multi-account.md)
+- [Zero Downtime Deployments && Rollback Strategies](docs/deployments.md)
+- [Monitoring & Logging](docs/monitoring.md)
+- [CI/CD Pipelines](docs/cicd.md)
+- [Infrastructure as Code](docs/iac.md)
+- [Cost Analysis](docs/costs.md)
+- [Security Best Practices](docs/security.md)
+
 ## Solution Comparison
 
 ### 1. S3 + CloudFront
@@ -46,18 +59,6 @@ This container-based solution offers:
 
 ### Prerequisites
 
-## Documentation
-
-- [Infrastructure as Code](docs/iac.md)
-  - [S3 + CloudFront Detailed Guide](docs/s3-cloudfront.md)
-  - [ECS + Fargate Detailed Guide](docs/ecs-fargate.md)
-- [Multi-Account Strategy](docs/multi-account.md)
-- [Zero Downtime Deployments && Rollback Strategies](docs/deployments.md)
-- [Monitoring & Logging](docs/monitoring.md)
-- [CI/CD Pipelines](docs/cicd.md)
-- [Infrastructure as Code](docs/iac.md)
-- [Cost Analysis](docs/costs.md)
-- [Security Best Practices](docs/security.md)
 
 ## Contributing
 
