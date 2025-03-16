@@ -7,21 +7,21 @@
 
 locals {
   root_vars = include.root.locals
-  env = local.root_vars.env
-  region = local.root_vars.region
-  module = local.root_vars.module
-  vars = local.root_vars.vars
+  env       = local.root_vars.env
+  region    = local.root_vars.region
+  module    = local.root_vars.module
+  vars      = local.root_vars.vars
 }
 
 # Include parent configuration
 include "root" {
-  path = find_in_parent_folders("root.hcl")
-  expose = true
+  path           = find_in_parent_folders("root.hcl")
+  expose         = true
   merge_strategy = "deep"
 }
 
 # Include the common module configuration
-include "common"{
-  path = "${get_repo_root()}/terragrunt/common/vpc.hcl"
+include "common" {
+  path           = "${get_repo_root()}/terragrunt/common/vpc.hcl"
   merge_strategy = "deep"
 }
