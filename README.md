@@ -1,115 +1,62 @@
-# 🚀 Infrastructure - S3 CloudFront GitHub Actions Workflow
+# AWS Static Website Hosting Solutions
 
-This repository contains a **GitHub Actions workflow** that automates the deployment of AWS infrastructure using **Terragrunt** and **Terraform**. The workflow supports **S3 + CloudFront**, **VPC**, and **ECS Fargate** deployments.
+This repository demonstrates two different approaches for hosting static websites on AWS, comparing their benefits and tradeoffs.
 
-## 📌 Features
-- **Automated Infrastructure Deployment** via GitHub Actions
-- **Environment-Specific Configurations** (Dev & Prod)
-- **Security Scanning** with Checkov
-- **Infrastructure Code Format Validation**
-- **Terraform Plan & Apply Automation**
-- **SARIF Security Reports** for GitHub Security Dashboard
+Check out the Medium Article I published on this topic: [AWS Static Website Hosting Solutions](https://medium.com/@guirgouveia/aws-static-website-hosting-with-terragrunt-and-github-actions-4199e88f5063) comparing the solutions in-depth, including cost analysis, security considerations, and deployment strategies.
 
----
+## Documentation
 
-## 🛠️ Workflow Triggers
-The workflow is triggered by:
-- **Manual Execution** (`workflow_dispatch`)
-- **Code Pushes & Pull Requests** (`push` & `pull_request` events on `main` & `dev` branches) with **Infrastructure Code Changes** on:
-  - `.github/workflows/infra-s3-cloudfront.yml`
-  - `terragrunt/live/**` 
-  - `terragrunt/modules/**`
+[ Docs under construction ]
 
----
+- [Infrastructure as Code](docs/iac.md)
+  - [S3 + CloudFront Detailed Guide](docs/s3-cloudfront.md)
+  - [ECS + Fargate Detailed Guide](docs/ecs-fargate.md)
+- [Multi-Account Strategy](docs/multi-account.md)
+- [Zero Downtime Deployments && Rollback Strategies](docs/deployments.md)
+- [Monitoring & Logging](docs/monitoring.md)
+- [CI/CD Pipelines](docs/cicd.md)
+- [Infrastructure as Code](docs/iac.md)
+- [Cost Analysis](docs/costs.md)
+- [Security Best Practices](docs/security.md)
 
-## 🏗️ Workflow Structure
-The GitHub Actions workflow follows a structured process:
+## Solution Comparison
 
-| Stage             | Description |
-|------------------|------------|
-| **Code Checks**  | Validates **Terragrunt HCL format** in Dev & Prod |
-| **Security Scan** | Runs **Checkov** to detect misconfigurations |
-| **Terraform Plan** | Creates a **Terraform Plan** and uploads as an artifact |
-| **Terraform Apply** | Applies the changes if approved |
+### 1. S3 + CloudFront
+This is a serverless solution ideal for static websites with:
+- **Cost Efficiency**: Pay only for storage and data transfer
+- **High Scalability**: CloudFront's global CDN ensures fast content delivery
+- **Zero Maintenance**: No servers to manage
+- **Simple Deployment**: Direct upload to S3
+- **Built-in Security**: CloudFront provides HTTPS and WAF integration
 
----
+### 2. ECS + Fargate
+This container-based solution offers:
+- **More Control**: Custom server configurations possible
+- **Advanced Features**: Server-side processing if needed
+- **Flexible Scaling**: Auto-scaling based on demand
+- **Isolation**: Containerized environments
+- **Modern Architecture**: Microservices-ready
 
-## 🔐 Security Scanning with SARIF Reports
-The workflow integrates [**Checkov**](https://www.checkov.io/) for security scanning. Results are uploaded to **GitHub Security Dashboard** via [**SARIF reports**](https://www.checkov.io/8.Outputs/SARIF.html).
+### Comparison with Other AWS Solutions
 
-```yaml
-- name: Run Checkov
-  uses: bridgecrewio/checkov-action@v12
-  with:
-    directory: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ inputs.deploy_module }}
-    output_format: cli,sarif
-    output_file_path: checkov-dev-results.sarif
-    soft_fail: true
+#### EC2
+- More management overhead
+- Requires manual scaling
+- Higher operational costs
+- Better for complex applications
 
-- name: Upload SARIF file
-  uses: github/codeql-action/upload-sarif@v3
-  with:
-    sarif_file: checkov-dev-results.sarif
-```
-✅ **Benefits**:
-- Direct security insights in **GitHub UI**
-- Automated PR security reviews
-- Continuous **compliance & governance**
+#### Amplify
+- Good for full-stack applications
+- Built-in CI/CD
+- Limited customization
+- Higher cost for simple static sites
 
----
+#### Elastic Beanstalk
+- More suitable for dynamic applications
+- Additional abstraction layer
+- Higher operational costs
+- Better for traditional web applications
 
-## 📂 Directory Structure
-```
-.
-├── terragrunt/
-│   ├── live/
-│   │   ├── us-east-1/
-│   │   │   ├── dev/
-│   │   │   ├── prod/
-│   ├── modules/
-├── .github/workflows/
-│   ├── infra-s3-cloudfront.yml
-```
+## Getting Started
 
----
-
-## 🏗️ Deployment Steps
-1. **Trigger Workflow Manually**
-   - Navigate to `Actions` → Select `Infrastructure - S3 CloudFront` workflow → Click `Run Workflow`
-2. **Push Changes to Main/Dev**
-   - GitHub Actions will **automatically validate, scan, and deploy** based on branch policies.
-3. **Review Security Scan Results**
-   - Check the **Security tab** for potential vulnerabilities.
-
----
-
-## ⚙️ Required Environment Variables
-Ensure the following **GitHub Secrets** and **Environment Variables** are set:
-
-| Name             | Type      | Description |
-|------------------|-----------|-------------|
-| `AWS_ACCOUNT_ID` | Secret    | AWS Account for authentication |
-| `AWS_REGION`     | Variable  | Deployment region (`us-east-1` by default) |
-| `GITHUB_TOKEN`   | Secret    | GitHub token for authentication |
-
-
-## 🔒 Environment Protection & Approvals
-
-The workflow leverages GitHub Environments to implement:
-- **Manual Approvals** between environments
-- **Environment-Specific Variables**
-- **Access Control** for sensitive deployments
-
----
-
-## 📌 Best Practices
-- ✅ Use **feature branches** for safe testing.
-- ✅ Regularly review **SARIF security reports**.
-- ✅ Ensure **least privilege IAM roles** for GitHub Actions.
-
----
-
-## 📞 Support
-For any issues or suggestions, open an **issue** in this repository.
-
-📧 **Contact:** [guilherme@jumads.com](mailto:guilherme@jumads.com)
+### Prerequisites

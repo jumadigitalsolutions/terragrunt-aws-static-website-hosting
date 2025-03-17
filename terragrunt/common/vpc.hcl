@@ -45,10 +45,10 @@ locals {
 inputs = {
   environment          = local.env
   region               = local.region
-  vpc_cidr             = local.vpc_cidr
-  azs                  = local.availability_zones
-  private_subnets      = try(local.vars.private_subnets, local.private_subnets)
-  public_subnets       = try(local.vars.public_subnets, local.public_subnets)
+  vpc_cidr             = local.vars.vpc_cidr
+  azs                  = try(local.vars.availability_zones, ["${local.region}a", "${local.region}b", "${local.region}c"])
+  private_subnets      = local.vars.private_subnets
+  public_subnets       = local.vars.public_subnets
   enable_nat_gateway   = try(local.vars.enable_nat_gateway, true)
   single_nat_gateway   = try(local.vars.single_nat_gateway, local.env != "prod")
   enable_dns_hostnames = try(local.vars.enable_dns_hostnames, true)
