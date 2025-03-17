@@ -2,7 +2,7 @@
 
 This repository demonstrates two different approaches for hosting static websites on AWS, comparing their benefits and tradeoffs.
 
-Check out the Medium Article I published on this topic: [AWS Static Website Hosting Solutions](https://medium.jumads.com/aws-static-website-hosting-solutions-7b3b3b3b3b3b) comparing the solutions in-depth, including cost analysis, security considerations, and deployment strategies.
+Check out the Medium Article I published on this topic: [AWS Static Website Hosting Solutions](https://medium.com/juma-digital-solutions/aws-static-website-hosting-with-terragrunt-and-github-actions-4199e88f5063) comparing the solutions in-depth, including cost analysis, security considerations, and deployment strategies.
 
 ## Documentation
 
