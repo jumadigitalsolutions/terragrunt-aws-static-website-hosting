@@ -100,6 +100,32 @@ The workflow leverages GitHub Environments to implement:
 - **Environment-Specific Variables**
 - **Access Control** for sensitive deployments
 
+## 🚀 DNS Management with GoDaddy & AWS Route 53
+
+This project leverages **GoDaddy's domain registration** while managing DNS records using **AWS Route 53**. To enable this setup, you must configure the **nameservers** in GoDaddy to point to the AWS **Hosted Zone**.
+
+### **Configuring GoDaddy to Use AWS Route 53**
+1. **Create a Hosted Zone in AWS Route 53**:
+   - Go to the AWS Console → Route 53 → "Hosted Zones"
+   - Click **"Create hosted zone"** and enter your domain name.
+   - Copy the **NS (Name Server) records** provided by AWS.
+
+2. **Update Nameservers in GoDaddy**:
+   - Log in to [GoDaddy](https://www.godaddy.com/)
+   - Go to **"My Products"** → Select your domain → Click **"Manage DNS"**
+   - Locate the **"Nameservers"** section and click **"Change"**
+   - Select **"Enter my own nameservers"** and replace them with the AWS NS records.
+   - Save the changes and wait for **DNS propagation**
+  
+  >_This process can take up to 48 hours, so certificate validation may fail during this process. Hence, we're using the variable use_custom_domain to disable custom domains until GoDady confirms the changes._
+
+### 🎯 **Summary**
+✅ **Domain remains registered with GoDaddy**
+✅ **DNS records are managed in AWS Route 53**
+✅ **GoDaddy’s nameservers must be updated to Route 53’s NS records**
+
+
+
 ---
 
 ## 📌 Best Practices

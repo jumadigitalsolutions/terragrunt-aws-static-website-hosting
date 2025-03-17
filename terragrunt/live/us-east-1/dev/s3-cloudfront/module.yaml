@@ -1,5 +1,5 @@
 # S3 + CloudFront specific configuration for dev
-bucket_name: "hippo-website-dev"
+bucket_name: "hippo-website"
 cloudfront_price_class: "PriceClass_100"
 error_document: "error.html"
 index_document: "index.html"
@@ -10,8 +10,10 @@ cors_allowed_methods:
   - "GET"
   - "HEAD"
 cors_max_age_seconds: 3600 
-domain: "dev.example.com"
-certificate_arn: "arn:aws:acm:us-east-1:123456789012:certificate/dev-cert"
+domain: "jumads.com"
+# DNS and certificate configuration
+acm_certificate_domain: ""  # Leave empty to use *.jumads.com as default
+use_custom_domain: false  # Temporarily set to false while waiting for GoDaddy nameserver delegation
 bucket_tags:
   Purpose: "static-website"
   Tier: "public"
