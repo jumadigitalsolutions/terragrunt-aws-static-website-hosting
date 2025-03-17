@@ -6,6 +6,8 @@ Check out the Medium Article I published on this topic: [AWS Static Website Host
 
 ## Documentation
 
+[ Docs under construction ]
+
 - [Infrastructure as Code](docs/iac.md)
   - [S3 + CloudFront Detailed Guide](docs/s3-cloudfront.md)
   - [ECS + Fargate Detailed Guide](docs/ecs-fargate.md)
