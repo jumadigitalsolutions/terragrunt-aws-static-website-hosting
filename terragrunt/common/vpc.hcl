@@ -2,9 +2,9 @@
 locals {
   # Parse the path to get the environment and region
   path   = split("/", path_relative_to_include())
-  region = local.path[1]
-  env    = local.path[2]
-  module = local.path[3]
+  region = local.path[2]
+  env    = local.path[3]
+  module = local.path[4]
 
   # Create merged environment variables from common and module configs
   vars = merge(
