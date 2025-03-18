@@ -86,7 +86,7 @@ jobs:
     if: github.event_name != 'pull_request'
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set environment name
       id: env_name
@@ -108,13 +108,12 @@ jobs:
       run: |
         echo "image_tag=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}-prod:${{ env.IMAGE_TAG }}" >> $GITHUB_OUTPUT
 
-    - name: Copy image from dev to prod
-      run: |
-        DEV_IMAGE="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}-dev:${{ env.IMAGE_TAG }}"
-        PROD_IMAGE="${{ steps.set-image.outputs.image_tag }}"
-        docker pull $DEV_IMAGE
-        docker tag $DEV_IMAGE $PROD_IMAGE
-        docker push $PROD_IMAGE
+    - name: Build and push image to Amazon ECR
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.set-image.outputs.image_tag }}
 
     - name: Render Task Definition
       id: render-task-def
