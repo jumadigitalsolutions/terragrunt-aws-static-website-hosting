@@ -230,7 +230,3 @@ This container-based solution offers:
 - Additional abstraction layer
 - Higher operational costs
 - Better for traditional web applications
-
-## Getting Started
-
-### Prerequisites
