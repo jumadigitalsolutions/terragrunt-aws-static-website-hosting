@@ -139,7 +139,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: dev-tfplan
-        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ needs.setup.outputs.deploy_module }}/tfplan
+        path: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ needs.setup.outputs.deploy_module }}/tfplan
         retention-days: 1
 
   # Apply DEV infrastructure changes
@@ -167,14 +167,14 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: dev-tfplan
-        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ needs.setup.outputs.deploy_module }}
+        path: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ needs.setup.outputs.deploy_module }}
 
     - name: Terragrunt Apply
       uses: gruntwork-io/terragrunt-action@v2
       with:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
-        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ needs.setup.outputs.deploy_module }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ needs.setup.outputs.deploy_module }}
         tg_command: 'run-all apply tfplan --terragrunt-non-interactive'
 
   # Terragrunt HCL Format Checks for PROD Environment
@@ -256,7 +256,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: prod-tfplan
-        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ needs.setup.outputs.deploy_module }}/tfplan
+        path: terragrunt/live/${{ vars.AWS_REGION }}/prod/${{ needs.setup.outputs.deploy_module }}/tfplan
         retention-days: 1
 
   # Apply PROD infrastructure changes
@@ -285,12 +285,12 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: prod-tfplan
-        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ needs.setup.outputs.deploy_module }}
+        path: terragrunt/live/${{ vars.AWS_REGION }}/prod/${{ needs.setup.outputs.deploy_module }}
 
     - name: Terragrunt Apply
       uses: gruntwork-io/terragrunt-action@v2
       with:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
-        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ needs.setup.outputs.deploy_module }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/prod/${{ needs.setup.outputs.deploy_module }}
         tg_command: 'run-all apply tfplan --terragrunt-non-interactive' 
