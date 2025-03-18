@@ -31,7 +31,6 @@ jobs:
     name: Deploy to Dev
     runs-on: ubuntu-latest
     environment: dev
-    if: github.event_name != 'pull_request'
     
     steps:
     - uses: actions/checkout@v3
