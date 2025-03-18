@@ -4,19 +4,16 @@
         {
             "Effect": "Allow",
             "Action": [
-                "s3:ListBucket",
-                "s3:GetObject",
+                "s3:Get*",
+                "s3:List*",
                 "s3:PutObject",
                 "s3:DeleteObject",
-                "s3:GetBucketLocation",
-                "s3:GetBucketPolicy",
                 "s3:PutBucketPolicy",
-                "s3:GetBucketAcl",
                 "s3:PutBucketAcl",
-                "s3:GetBucketOwnershipControls",
                 "s3:PutBucketOwnershipControls",
-                "s3:GetBucketPublicAccessBlock",
                 "s3:PutBucketPublicAccessBlock",
+                "s3:PutBucketVersioning",
+                "s3:PutEncryptionConfiguration",
                 "s3:CreateBucket",
                 "s3:DeleteBucket"
             ],
@@ -27,18 +24,28 @@
         {
             "Effect": "Allow",
             "Action": [
+                "dynamodb:Get*",
+                "dynamodb:List*",
+                "dynamodb:Describe*",
+                "dynamodb:PutItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:CreateTable"
+            ],
+            "Resource": "arn:aws:dynamodb:*:*:table/terraform-*"
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "cloudfront:Get*",
+                "cloudfront:List*",
                 "cloudfront:CreateDistribution",
-                "cloudfront:GetDistribution",
                 "cloudfront:UpdateDistribution",
                 "cloudfront:DeleteDistribution",
                 "cloudfront:TagResource",
                 "cloudfront:UntagResource",
-                "cloudfront:ListTagsForResource",
                 "cloudfront:CreateOriginAccessControl",
-                "cloudfront:GetOriginAccessControl",
                 "cloudfront:UpdateOriginAccessControl",
-                "cloudfront:DeleteOriginAccessControl",
-                "cloudfront:ListOriginAccessControls"
+                "cloudfront:DeleteOriginAccessControl"
             ],
             "Resource": [
                 "*"
@@ -47,15 +54,12 @@
         {
             "Effect": "Allow",
             "Action": [
+                "route53:Get*",
+                "route53:List*",
                 "route53:CreateHostedZone",
-                "route53:GetHostedZone",
-                "route53:ListHostedZones",
                 "route53:DeleteHostedZone",
                 "route53:ChangeResourceRecordSets",
-                "route53:ListResourceRecordSets",
                 "route53:GetChange",
-                "route53:ListTagsForResource",
-                "route53:ListTagsForResources",
                 "route53:ChangeTagsForResource"
             ],
             "Resource": [
@@ -65,11 +69,11 @@
         {
             "Effect": "Allow",
             "Action": [
+                "acm:Get*",
+                "acm:List*",
+                "acm:Describe*",
                 "acm:RequestCertificate",
-                "acm:DescribeCertificate",
                 "acm:DeleteCertificate",
-                "acm:ListCertificates",
-                "acm:ListTagsForCertificate",
                 "acm:AddTagsToCertificate",
                 "acm:RemoveTagsFromCertificate"
             ],
@@ -80,30 +84,15 @@
         {
             "Effect": "Allow",
             "Action": [
-                "ec2:DescribeVpcs",
-                "ec2:DescribeSubnets",
-                "ec2:DescribeSecurityGroups",
-                "ec2:DescribeRouteTables",
-                "ec2:DescribeInternetGateways",
-                "ec2:DescribeNatGateways",
-                "ec2:CreateVpc",
-                "ec2:DeleteVpc",
-                "ec2:CreateSubnet",
-                "ec2:DeleteSubnet",
-                "ec2:CreateRouteTable",
-                "ec2:DeleteRouteTable",
-                "ec2:CreateRoute",
-                "ec2:DeleteRoute",
-                "ec2:CreateInternetGateway",
-                "ec2:DeleteInternetGateway",
-                "ec2:AttachInternetGateway",
-                "ec2:DetachInternetGateway",
-                "ec2:AllocateAddress",
-                "ec2:ReleaseAddress",
-                "ec2:AssociateRouteTable",
-                "ec2:DisassociateRouteTable",
-                "ec2:CreateTags",
-                "ec2:DeleteTags"
+                "ec2:Describe*",
+                "ec2:Create*",
+                "ec2:Delete*",
+                "ec2:Attach*",
+                "ec2:Detach*",
+                "ec2:Allocate*",
+                "ec2:Release*",
+                "ec2:Associate*",
+                "ec2:Disassociate*"
             ],
             "Resource": [
                 "*"
@@ -112,11 +101,12 @@
         {
             "Effect": "Allow",
             "Action": [
+                "logs:Get*",
+                "logs:List*",
+                "logs:Describe*",
                 "logs:CreateLogGroup",
                 "logs:CreateLogStream",
-                "logs:PutLogEvents",
-                "logs:DescribeLogGroups",
-                "logs:DescribeLogStreams"
+                "logs:PutLogEvents"
             ],
             "Resource": [
                 "arn:aws:logs:*:*:*"
