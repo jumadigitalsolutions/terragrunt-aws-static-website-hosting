@@ -3,11 +3,15 @@ name: Infrastructure - ECS Fargate
 on:
   workflow_dispatch: # Allows manually triggering the workflow
     inputs: # Declare inputs for the workflow
-      branch:
-        description: 'Default Branch to run the workflow from'
-        required: true
-        default: 'dev' # Defaults to dev to avoid any unexpected changes to prod
-        type: string
+      deploy_module:
+        description: 'Deploy Module'
+        required: false
+        default: 'ecs-fargate'
+        type: choice
+        options:
+          - vpc
+          - s3-cloudfront
+          - ecs-fargate
 
   push: # Triggers the workflow on a push to the main branch  
     branches: [ main, dev ]
@@ -36,7 +40,7 @@ permissions:
 env:
   tf_version: 1.11.2 # Terraform version
   tg_version: 0.75.10 # Terragrunt version     
-  module_dir: ecs-fargate # Module directory name
+  deploy_module: ${{ inputs.deploy_module || 'ecs-fargate' }} # Module directory name
 
 jobs:
   # Setup job to determine variables
@@ -44,14 +48,14 @@ jobs:
     name: Setup Variables
     runs-on: ubuntu-latest
     outputs:
-      branch: ${{ steps.set_variables.outputs.branch }}
+      deploy_module: ${{ steps.set_variables.outputs.deploy_module }}
     steps:
       - id: set_variables
         name: Set Default Variables
         env:
-          BRANCH: ${{ inputs.branch }}
+          DEPLOY_MODULE: ${{ inputs.deploy_module }}
         run: |
-          echo "branch=${BRANCH:-dev}" >> $GITHUB_OUTPUT
+          echo "deploy_module=${DEPLOY_MODULE:-ecs-fargate}" >> $GITHUB_OUTPUT
 
   # Terragrunt HCL Format Checks for DEV Environment
   check-dev-code:
@@ -62,8 +66,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.setup.outputs.branch }}
 
       - name: Set environment name
         id: env_name
@@ -75,7 +77,7 @@ jobs:
           tf_version: ${{ env.tf_version }}
           tg_version: ${{ env.tg_version }}
           tg_command: 'hclfmt --check --non-interactive --diff'
-          tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ env.module_dir }}
+          tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ needs.setup.outputs.deploy_module }}
 
   # Security scanning for DEV environment
   security-scan-dev:
@@ -86,13 +88,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.setup.outputs.branch }}
 
       - name: Run Checkov
         uses: bridgecrewio/checkov-action@v12
         with:
-          directory: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ env.module_dir }}
+          directory: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ needs.setup.outputs.deploy_module }}
           quiet: true
           output_format: cli,sarif
           output_file_path: console,checkov-dev-results.sarif
@@ -114,8 +114,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        ref: ${{ needs.setup.outputs.branch }}
 
     - name: Set environment name
       id: env_name
@@ -133,7 +131,7 @@ jobs:
       with:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
-        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ env.module_dir }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ needs.setup.outputs.deploy_module }}
         tg_comment: true # Comment on the PR with the Terragrunt plan output
         tg_command: 'run-all plan -out=tfplan --terragrunt-non-interactive'
     
@@ -141,7 +139,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: dev-tfplan
-        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ env.module_dir }}/tfplan
+        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ needs.setup.outputs.deploy_module }}/tfplan
         retention-days: 1
 
   # Apply DEV infrastructure changes
@@ -153,8 +151,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        ref: ${{ needs.setup.outputs.branch }}
 
     - name: Set environment name
       id: env_name
@@ -171,14 +167,14 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: dev-tfplan
-        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ env.module_dir }}
+        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ needs.setup.outputs.deploy_module }}
 
     - name: Terragrunt Apply
       uses: gruntwork-io/terragrunt-action@v2
       with:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
-        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ env.module_dir }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ needs.setup.outputs.deploy_module }}
         tg_command: 'run-all apply tfplan --terragrunt-non-interactive'
 
   # Terragrunt HCL Format Checks for PROD Environment
@@ -190,8 +186,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.setup.outputs.branch }}
 
       - name: Check terragrunt HCL for PROD Environment
         uses: gruntwork-io/terragrunt-action@v2
@@ -199,7 +193,7 @@ jobs:
           tf_version: ${{ env.tf_version }}
           tg_version: ${{ env.tg_version }}
           tg_command: 'hclfmt --check --non-interactive --diff'
-          tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/prod/${{ env.module_dir }}
+          tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/prod/${{ needs.setup.outputs.deploy_module }}
 
   # Security scanning for PROD environment
   security-scan-prod:
@@ -210,13 +204,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.setup.outputs.branch }}
 
       - name: Run Checkov
         uses: bridgecrewio/checkov-action@v12
         with:
-          directory: terragrunt/live/${{ vars.AWS_REGION }}/prod/${{ env.module_dir }}
+          directory: terragrunt/live/${{ vars.AWS_REGION }}/prod/${{ needs.setup.outputs.deploy_module }}
           quiet: true
           output_format: cli,sarif
           output_file_path: console,checkov-prod-results.sarif
@@ -239,8 +231,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        ref: ${{ needs.setup.outputs.branch }}
 
     - name: Set environment name
       id: env_name
@@ -258,7 +248,7 @@ jobs:
       with:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
-        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ env.module_dir }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ needs.setup.outputs.deploy_module }}
         tg_comment: true
         tg_command: 'run-all plan -out=tfplan --terragrunt-non-interactive'
     
@@ -266,7 +256,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: prod-tfplan
-        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ env.module_dir }}/tfplan
+        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ needs.setup.outputs.deploy_module }}/tfplan
         retention-days: 1
 
   # Apply PROD infrastructure changes
@@ -279,8 +269,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        ref: ${{ needs.setup.outputs.branch }}
 
     - name: Set environment name
       id: env_name
@@ -297,12 +285,12 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: prod-tfplan
-        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ env.module_dir }}
+        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ needs.setup.outputs.deploy_module }}
 
     - name: Terragrunt Apply
       uses: gruntwork-io/terragrunt-action@v2
       with:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
-        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ env.module_dir }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ needs.setup.outputs.deploy_module }}
         tg_command: 'run-all apply tfplan --terragrunt-non-interactive' 

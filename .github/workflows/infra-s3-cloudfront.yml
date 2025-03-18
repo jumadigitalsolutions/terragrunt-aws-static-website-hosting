@@ -3,11 +3,6 @@ name: Infrastructure - S3 CloudFront
 on:
   workflow_dispatch: # Allows manually triggering the workflow
     inputs: # Declare inputs for the workflow
-      branch:
-        description: 'Default Branch to run the workflow from'
-        required: true
-        default: 'dev' # Defaults to dev to avoid any unexpected changes to prod
-        type: string
       deploy_module:
         description: 'Deploy Module'
         required: false
@@ -45,27 +40,22 @@ permissions:
 env:
   tf_version: 1.11.2 # Terraform version
   tg_version: 0.75.10 # Terragrunt version     
-  dev_dir: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ inputs.deploy_module }} # Terraform directory for DEV environment
-  prod_dir: terragrunt/live/${{ vars.AWS_REGION }}/prod/${{ inputs.deploy_module }} # Terraform directory for PROD environment
+  deploy_module: ${{ inputs.deploy_module || 's3-cloudfront' }} # Module directory name
 
 jobs:
-  # Setup job to determine variables. This job is required because we're 
-  # triggering the workflow with multiple event types as explained in the README.md file.
+  # Setup job to determine variables
   setup:
     name: Setup Variables
     runs-on: ubuntu-latest
     outputs:
       deploy_module: ${{ steps.set_variables.outputs.deploy_module }}
-      branch: ${{ steps.set_variables.outputs.branch }}
     steps:
       - id: set_variables
         name: Set Default Variables
         env:
           DEPLOY_MODULE: ${{ inputs.deploy_module }}
-          BRANCH: ${{ inputs.branch }}
         run: |
           echo "deploy_module=${DEPLOY_MODULE:-s3-cloudfront}" >> $GITHUB_OUTPUT
-          echo "branch=${BRANCH:-dev}" >> $GITHUB_OUTPUT
 
   # Terragrunt HCL Format Checks for DEV Environment
   check-dev-code:
@@ -76,8 +66,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.setup.outputs.branch }}
 
       - name: Set environment name
         id: env_name
@@ -100,8 +88,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.setup.outputs.branch }}
 
       - name: Run Checkov
         uses: bridgecrewio/checkov-action@v12
@@ -128,8 +114,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        ref: ${{ needs.setup.outputs.branch }}
 
     - name: Set environment name
       id: env_name
@@ -164,7 +148,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: dev-tfplan
-        path: terragrunt/live/${{ vars.AWS_REGION || 'us-east-1' }}/${{ steps.env_name.outputs.environment }}/${{ inputs.deploy_module }}/tfplan
+        path: terragrunt/live/${{ vars.AWS_REGION || 'us-east-1' }}/${{ steps.env_name.outputs.environment }}/${{ needs.setup.outputs.deploy_module }}/tfplan
         retention-days: 1
 
   # Apply DEV infrastructure changes
@@ -176,8 +160,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        ref: ${{ needs.setup.outputs.branch }}
 
     - name: Set environment name
       id: env_name
@@ -203,14 +185,14 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: dev-tfplan
-        path: terragrunt/live/${{ vars.AWS_REGION || 'us-east-1' }}/${{ steps.env_name.outputs.environment }}/${{ inputs.deploy_module }}
+        path: terragrunt/live/${{ vars.AWS_REGION || 'us-east-1' }}/${{ steps.env_name.outputs.environment }}/${{ needs.setup.outputs.deploy_module }}
 
     - name: Terragrunt Apply
       uses: gruntwork-io/terragrunt-action@v2
       with:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
-        tg_dir: terragrunt/live/${{ vars.AWS_REGION || 'us-east-1' }}/${{ steps.env_name.outputs.environment }}/${{ inputs.deploy_module }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION || 'us-east-1' }}/${{ steps.env_name.outputs.environment }}/${{ needs.setup.outputs.deploy_module }}
         tg_command: 'run-all apply tfplan --terragrunt-non-interactive'
 
   # Terragrunt HCL Format Checks for PROD Environment
@@ -222,8 +204,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.setup.outputs.branch }}
 
       - name: Check terragrunt HCL for PROD Environment
         uses: gruntwork-io/terragrunt-action@v2
@@ -242,8 +222,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.setup.outputs.branch }}
 
       - name: Run Checkov
         uses: bridgecrewio/checkov-action@v12
@@ -271,8 +249,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        ref: ${{ needs.setup.outputs.branch }}
 
     - name: Set environment name
       id: env_name
@@ -311,8 +287,6 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-      with:
-        ref: ${{ needs.setup.outputs.branch }}
 
     - name: Set environment name
       id: env_name
