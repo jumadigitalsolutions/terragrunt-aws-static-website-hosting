@@ -13,7 +13,6 @@ cors_max_age_seconds: 3600
 domain: "jumads.com"
 # DNS and certificate configuration
 acm_certificate_domain: ""  # Leave empty to use *.jumads.com as default
-use_custom_domain: false  # Temporarily set to false while waiting for GoDaddy nameserver delegation
 bucket_tags:
   Purpose: "static-website"
   Tier: "public"
