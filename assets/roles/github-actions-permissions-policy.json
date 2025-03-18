@@ -45,7 +45,8 @@
                 "cloudfront:UntagResource",
                 "cloudfront:CreateOriginAccessControl",
                 "cloudfront:UpdateOriginAccessControl",
-                "cloudfront:DeleteOriginAccessControl"
+                "cloudfront:DeleteOriginAccessControl",
+                "cloudfront:CreateInvalidation"
             ],
             "Resource": [
                 "*"

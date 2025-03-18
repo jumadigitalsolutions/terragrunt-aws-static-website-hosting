@@ -67,7 +67,8 @@ Follow these steps to update the permissions for your GitHub Actions role to fix
                 "cloudfront:UntagResource",
                 "cloudfront:CreateOriginAccessControl",
                 "cloudfront:UpdateOriginAccessControl",
-                "cloudfront:DeleteOriginAccessControl"
+                "cloudfront:DeleteOriginAccessControl",
+                "cloudfront:CreateInvalidation"
             ],
             "Resource": [
                 "*"
