@@ -61,11 +61,11 @@ jobs:
       - id: set_variables
         name: Set Default Variables
         env:
-          deploy_module: ${{ inputs.deploy_module }}
-          branch: ${{ inputs.branch }}
+          DEPLOY_MODULE: ${{ inputs.deploy_module }}
+          BRANCH: ${{ inputs.branch }}
         run: |
-          echo "${inputs.deploy_module:-s3-cloudfront}" >> $GITHUB_OUTPUT
-          echo "${inputs.branch:-dev}" >> $GITHUB_OUTPUT
+          echo "deploy_module=${DEPLOY_MODULE:-s3-cloudfront}" >> $GITHUB_OUTPUT
+          echo "branch=${BRANCH:-dev}" >> $GITHUB_OUTPUT
 
   # Terragrunt HCL Format Checks for DEV Environment
   check-dev-code:
