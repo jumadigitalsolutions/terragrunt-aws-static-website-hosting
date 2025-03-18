@@ -62,16 +62,25 @@ jobs:
         push: true
         tags: ${{ steps.set-image.outputs.image_tag }}
 
-    - name: Deploy to ECS
+    - name: Download Task Definition
       run: |
-        # Navigate to the terragrunt directory
-        cd terragrunt/live/us-east-1/dev/ecs-fargate
+        aws ecs describe-task-definition --task-definition hippo-website-dev --query taskDefinition > task-definition.json
 
-        # Update the image_tag variable in the module.yaml
-        echo "image_tag: \"${{ env.IMAGE_TAG }}\"" > image_tag.auto.tfvars.yaml
+    - name: Render Task Definition
+      id: render-task-def
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition-arn: arn:aws:ecs:${{ env.AWS_REGION }}:${{ env.AWS_ACCOUNT_ID }}:task-definition/hippo-website-dev
+        container-name: hippo-website
+        image: ${{ steps.set-image.outputs.image_tag }}
 
-        # Run terragrunt apply to update the ECS service with the new image
-        terragrunt apply -auto-approve -input=false
+    - name: Deploy to ECS
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+      with:
+        task-definition: ${{ steps.render-task-def.outputs.task-definition }}
+        service: hippo-service-dev
+        cluster: hippo-cluster-dev
+        wait-for-service-stability: true
 
   deploy-prod:
     name: Deploy to Production
@@ -111,13 +120,22 @@ jobs:
         docker tag $DEV_IMAGE $PROD_IMAGE
         docker push $PROD_IMAGE
 
-    - name: Deploy to ECS
+    - name: Download Task Definition
       run: |
-        # Navigate to the terragrunt directory
-        cd terragrunt/live/us-east-1/prod/ecs-fargate
+        aws ecs describe-task-definition --task-definition hippo-website-prod --query taskDefinition > task-definition.json
 
-        # Update the image_tag variable in the module.yaml
-        echo "image_tag: \"${{ env.IMAGE_TAG }}\"" > image_tag.auto.tfvars.yaml
+    - name: Render Task Definition
+      id: render-task-def
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition: task-definition.json
+        container-name: hippo-website
+        image: ${{ steps.set-image.outputs.image_tag }}
 
-        # Run terragrunt apply to update the ECS service with the new image
-        terragrunt apply -auto-approve -input=false
+    - name: Deploy to ECS
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+      with:
+        task-definition: ${{ steps.render-task-def.outputs.task-definition }}
+        service: hippo-service-prod
+        cluster: hippo-cluster-prod
+        wait-for-service-stability: true
