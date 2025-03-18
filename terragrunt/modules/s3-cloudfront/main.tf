@@ -100,14 +100,6 @@ resource "aws_acm_certificate_validation" "cloudfront" {
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
 }
 
-# Add a wait time to ensure certificate validation is complete before creating CloudFront
-resource "time_sleep" "wait_for_certificate_validation" {
-  depends_on = [aws_acm_certificate_validation.cloudfront]
-
-  # Wait for 10 seconds as a precaution
-  create_duration = "10s"
-}
-
 # CDN Configuration - Updated to use OAC
 resource "aws_cloudfront_distribution" "website" {
   origin {
@@ -162,8 +154,8 @@ resource "aws_cloudfront_distribution" "website" {
 
   tags = var.tags
 
-  # Use a static depends_on list instead of a conditional expression
-  depends_on = [time_sleep.wait_for_certificate_validation]
+  # Wait for certificate validation before creating the distribution only if using custom domain
+  depends_on = var.use_custom_domain ? [aws_acm_certificate_validation.cloudfront[0]] : []
 }
 
 # Create Route53 alias record pointing to the CloudFront distribution

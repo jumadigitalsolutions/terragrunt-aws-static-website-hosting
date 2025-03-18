@@ -1,0 +1,126 @@
+name: Deploy to ECS + Fargate
+
+on:
+  workflow_dispatch: # Allows manually triggering the workflow
+  push: # Triggers the workflow on a push to the main branch
+    branches: [ main ]
+    paths: # Application code changes trigger the pipeline
+      - 'src/**'
+      - 'Dockerfile'
+      - 'assets/config/**'
+      - '.github/workflows/deploy-ecs-fargate.yml'
+  pull_request: # Same as push triggers, but for PR validation
+    branches: [ main ]
+    paths: # Application code changes trigger the pipeline
+      - 'src/**'
+      - 'Dockerfile'
+      - 'assets/config/**'
+      - '.github/workflows/deploy-ecs-fargate.yml'
+
+# Security context for AWS authentication
+permissions:
+  id-token: write  # Required for OIDC token exchange to assume AWS role
+  contents: read   # Repository access
+
+env:
+  AWS_REGION: us-east-1  # Default deployment region
+  IMAGE_TAG: ${{ github.sha }}  # Commit-based tagging
+  ECR_REPOSITORY: hippo-website
+  AWS_ACCOUNT_ID: ${{ env.AWS_ACCOUNT_ID }}
+
+jobs:
+  deploy-dev:
+    name: Deploy to Dev
+    runs-on: ubuntu-latest
+    environment: dev
+    if: github.event_name != 'pull_request' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/github-actions-role
+        aws-region: ${{ env.AWS_REGION }}
+        role-session-name: GitHubActionsSession
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Set image tag
+      id: set-image
+      run: |
+        echo "image_tag=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}-dev:${{ env.IMAGE_TAG }}" >> $GITHUB_OUTPUT
+
+    - name: Build, Test and Push to ECR
+      uses: ./.github/actions/build-test-and-push-to-ecr.yml
+      with:
+        image-tag: ${{ steps.set-image.outputs.image_tag }}
+
+    - name: Render task definition
+      id: render-task-def
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition-arn: arn:aws:ecs:${{ env.AWS_REGION }}:${{ env.AWS_ACCOUNT_ID }}:task-definition/hippo-website-dev
+        container-name: hippo-container
+        image: ${{ steps.set-image.outputs.image_tag }}
+
+    - name: Deploy to ECS
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+      with:
+        task-definition: ${{ steps.render-task-def.outputs.task-definition-arn }}
+        service: hippo-service-dev
+        cluster: hippo-cluster-dev
+        wait-for-service-stability: true
+
+  deploy-prod:
+    name: Deploy to Production
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    environment: prod
+    if: github.event_name != 'pull_request'
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/github-actions-role
+        aws-region: ${{ env.AWS_REGION }}
+        role-session-name: GitHubActionsSession
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Set image tag
+      id: set-image
+      run: |
+        echo "image_tag=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}-prod:${{ env.IMAGE_TAG }}" >> $GITHUB_OUTPUT
+
+    - name: Copy image from dev to prod
+      run: |
+        DEV_IMAGE="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}-dev:${{ env.IMAGE_TAG }}"
+        PROD_IMAGE="${{ steps.set-image.outputs.image_tag }}"
+        docker pull $DEV_IMAGE
+        docker tag $DEV_IMAGE $PROD_IMAGE
+        docker push $PROD_IMAGE
+
+    - name: Render task definition
+      id: render-task-def
+      uses: aws-actions/amazon-ecs-render-task-definition@v1
+      with:
+        task-definition-arn: arn:aws:ecs:${{ env.AWS_REGION }}:${{ env.AWS_ACCOUNT_ID }}:task-definition/hippo-website-prod
+        container-name: hippo-container
+        image: ${{ steps.set-image.outputs.image_tag }}
+
+    - name: Deploy to ECS
+      uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+      with:
+        task-definition: ${{ steps.render-task-def.outputs.task-definition-arn }}
+        service: hippo-service-prod
+        cluster: hippo-cluster-prod
+        wait-for-service-stability: true

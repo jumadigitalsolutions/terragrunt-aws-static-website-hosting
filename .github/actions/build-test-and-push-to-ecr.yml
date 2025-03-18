@@ -1,0 +1,63 @@
+name: 'Build, Test and Push to ECR'
+description: 'Composite action to build Docker image, run tests, and push to ECR'
+
+# Defines the inputs that can be passed to the action
+inputs:
+  image-tag:
+    description: 'Full ECR image tag including registry and repository'
+    required: true
+  platforms:
+    description: 'Platforms to build the image for'
+    required: false
+    default: 'linux/amd64,linux/arm64'
+
+runs:
+  using: "composite" # Allows creating reusable actions from a collection of other actions
+  steps:
+    # Lint Dockerfile
+    - name: Lint Dockerfile
+      uses: hadolint/hadolint-action@v3.1.0
+      with:
+        dockerfile: Dockerfile
+        format: sarif
+        output-file: hadolint-results.sarif
+
+    # Uses Docker Buildx and QEMU to be able to build images for multiple architectures
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    # Build the image and Load the image into the local Docker daemon for scanning and testing
+    - name: Build the image
+      uses: docker/build-push-action@v6
+      with:
+        load: true # Load the image into the local Docker daemon
+        tags: ${{ inputs.image-tag }}
+        platforms: ${{ inputs.platforms }}
+
+    # Run Trivy vulnerability scanner on the container image to check for vulnerabilities
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: ${{ inputs.image-tag }}
+        format: 'table'
+        exit-code: '1'
+        ignore-unfixed: true
+        vuln-type: 'os,library'
+        severity: 'CRITICAL,HIGH'
+
+    # Simply run the image to test it
+    - name: Test the image
+      shell: bash
+      run: |
+        docker run --rm ${{ inputs.image-tag }}
+
+    # Push the image to ECR
+    - name: Push the image
+      uses: docker/build-push-action@v6
+      with:
+        push: true
+        tags: ${{ inputs.image-tag }}
+        platforms: ${{ inputs.platforms }}
