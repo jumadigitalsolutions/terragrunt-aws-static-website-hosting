@@ -20,15 +20,15 @@ on:
 
   push: # Triggers the workflow on a push to the main branch  
     branches: [ main, dev ]
-    paths: # Only triggers the pipeline upon Infra code changes related to Terragrunt and Terraform files
-      - 'terragrunt/live/**'
-      - 'terragrunt/modules/**'
+    paths: # Only triggers the pipeline upon S3-CloudFront code changes
+      - 'terragrunt/modules/s3-cloudfront/**'
+      - 'terragrunt/live/**/s3-cloudfront/**'
       - '.github/workflows/infra-s3-cloudfront.yml'
   pull_request: # Same as push triggers, but for PR validation
     branches: [ main, dev ]
-    paths:  
-      - 'terragrunt/live/**'
-      - 'terragrunt/modules/**'
+    paths:  # Only triggers the pipeline upon S3-CloudFront code changes
+      - 'terragrunt/modules/s3-cloudfront/**'
+      - 'terragrunt/live/**/s3-cloudfront/**'
       - '.github/workflows/infra-s3-cloudfront.yml'
 
 # Security context for AWS authentication
@@ -158,7 +158,7 @@ jobs:
         tg_version: ${{ env.tg_version }}
         tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ needs.setup.outputs.deploy_module }}
         tg_comment: true # Comment on the PR with the Terragrunt plan output
-        tg_command: 'plan -out=tfplan'
+        tg_command: 'run-all plan -out=tfplan --terragrunt-non-interactive'
     
     - name: Upload Terraform Plan
       uses: actions/upload-artifact@v4
@@ -211,7 +211,7 @@ jobs:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
         tg_dir: terragrunt/live/${{ vars.AWS_REGION || 'us-east-1' }}/${{ steps.env_name.outputs.environment }}/${{ inputs.deploy_module }}
-        tg_command: 'apply tfplan'
+        tg_command: 'run-all apply tfplan --terragrunt-non-interactive'
 
   # Terragrunt HCL Format Checks for PROD Environment
   check-prod-code:
@@ -292,7 +292,7 @@ jobs:
         tg_version: ${{ env.tg_version }}
         tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ needs.setup.outputs.deploy_module }}
         tg_comment: true
-        tg_command: 'plan -out=tfplan'
+        tg_command: 'run-all plan -out=tfplan --terragrunt-non-interactive'
     
     - name: Upload Terraform Plan
       uses: actions/upload-artifact@v4
@@ -337,4 +337,4 @@ jobs:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
         tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ needs.setup.outputs.deploy_module }}
-        tg_command: 'apply tfplan'
+        tg_command: 'run-all apply tfplan --terragrunt-non-interactive'

@@ -30,18 +30,33 @@ locals {
 # Dependencies
 dependency "vpc" {
   config_path = "../vpc"
+
+  # Configure mock outputs for plan operations when VPC might not exist yet
+  mock_outputs = {
+    vpc_id            = "mock-vpc-id"
+    public_subnets    = ["mock-subnet-1", "mock-subnet-2"]
+    private_subnets   = ["mock-subnet-3", "mock-subnet-4"]
+    vpc_cidr_block    = "10.0.0.0/16"
+  }
+  mock_outputs_allowed_terraform_commands = ["validate", "plan"]
 }
 
 # Inputs for the variables defined for the module
 inputs = {
-  execution_role_arn = "arn:aws:iam::${get_aws_account_id()}:role/ecsTaskExecutionRole"
-  task_role_arn      = "arn:aws:iam::${get_aws_account_id()}:role/ecsTaskRole"
-  vpc_id             = dependency.vpc.outputs.vpc_id
-  private_subnet_ids = dependency.vpc.outputs.private_subnets
-  public_subnet_ids  = dependency.vpc.outputs.public_subnets
-  security_group_ids = try(local.vars.security_group_ids, [])
-  tags = merge(
-    local.default_tags,
-    try(local.vars.tags, {})
-  )
-} 
+  # Required input
+  environment = local.env
+  
+  # Use VPC outputs instead of creating new resources
+  vpc_id            = dependency.vpc.outputs.vpc_id
+  public_subnet_ids = dependency.vpc.outputs.public_subnets
+  
+  # Other optional inputs
+  region              = local.region
+  task_cpu            = 256
+  task_memory         = 512
+  service_desired_count = 1
+  image_tag           = "latest"
+  
+  # Additional tags
+  tags = local.default_tags
+}

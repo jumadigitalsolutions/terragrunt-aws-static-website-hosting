@@ -10,13 +10,13 @@ variable "region" {
 }
 
 variable "task_cpu" {
-  description = "CPU units for the ECS task"
+  description = "CPU units for the ECS task (256 = 0.25 vCPU)"
   type        = number
   default     = 256
 }
 
 variable "task_memory" {
-  description = "Memory for the ECS task"
+  description = "Memory for the ECS task in MiB"
   type        = number
   default     = 512
 }
@@ -31,4 +31,21 @@ variable "image_tag" {
   description = "Docker image tag to deploy"
   type        = string
   default     = "latest"
+}
+
+# VPC variables from dependencies
+variable "vpc_id" {
+  description = "ID of the VPC to deploy resources into"
+  type        = string
+}
+
+variable "public_subnet_ids" {
+  description = "List of public subnet IDs for ALB and ECS tasks"
+  type        = list(string)
+}
+
+variable "tags" {
+  description = "Additional tags to apply to resources"
+  type        = map(string)
+  default     = {}
 }

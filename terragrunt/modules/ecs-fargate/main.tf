@@ -42,85 +42,11 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# Creates a VPC for the hippo website
-resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_support   = true
-  enable_dns_hostnames = true
-
-  tags = {
-    Name        = "hippo-vpc-${var.environment}"
-    Environment = var.environment
-  }
-}
-
-# Creates a public subnet for the hippo website
-resource "aws_subnet" "public_a" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = "${var.region}a"
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name        = "hippo-public-a-${var.environment}"
-    Environment = var.environment
-  }
-}
-
-resource "aws_subnet" "public_b" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.2.0/24"
-  availability_zone       = "${var.region}b"
-  map_public_ip_on_launch = true
-
-  tags = {
-    Name        = "hippo-public-b-${var.environment}"
-    Environment = var.environment
-  }
-}
-
-# Creates an internet gateway for the hippo website
-resource "aws_internet_gateway" "main" {
-  vpc_id = aws_vpc.main.id
-
-  tags = {
-    Name        = "hippo-igw-${var.environment}"
-    Environment = var.environment
-  }
-}
-
-# Creates a route table for the hippo website
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.main.id
-  }
-
-  tags = {
-    Name        = "hippo-public-rt-${var.environment}"
-    Environment = var.environment
-  }
-}
-
-# Associates the public subnet with the route table
-resource "aws_route_table_association" "public_a" {
-  subnet_id      = aws_subnet.public_a.id
-  route_table_id = aws_route_table.public.id
-}
-
-# Associates the public subnet with the route table
-resource "aws_route_table_association" "public_b" {
-  subnet_id      = aws_subnet.public_b.id
-  route_table_id = aws_route_table.public.id
-}
-
 # Creates a security group for the ALB
 resource "aws_security_group" "alb" {
   name        = "hippo-alb-sg-${var.environment}"
   description = "Security group for ALB"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = var.vpc_id
 
   ingress {
     from_port   = 80
@@ -136,17 +62,20 @@ resource "aws_security_group" "alb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name        = "hippo-alb-sg-${var.environment}"
-    Environment = var.environment
-  }
+  tags = merge(
+    {
+      Name        = "hippo-alb-sg-${var.environment}"
+      Environment = var.environment
+    },
+    var.tags
+  )
 }
 
 # Creates a security group for the ECS tasks
 resource "aws_security_group" "ecs_tasks" {
   name        = "hippo-ecs-tasks-sg-${var.environment}"
   description = "Security group for ECS tasks"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = var.vpc_id
 
   ingress {
     from_port       = 80
@@ -162,10 +91,13 @@ resource "aws_security_group" "ecs_tasks" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = {
-    Name        = "hippo-ecs-tasks-sg-${var.environment}"
-    Environment = var.environment
-  }
+  tags = merge(
+    {
+      Name        = "hippo-ecs-tasks-sg-${var.environment}"
+      Environment = var.environment
+    },
+    var.tags
+  )
 }
 
 # Creates an ALB for the hippo website
@@ -174,12 +106,15 @@ resource "aws_lb" "main" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
-  subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+  subnets            = var.public_subnet_ids
 
-  tags = {
-    Name        = "hippo-alb-${var.environment}"
-    Environment = var.environment
-  }
+  tags = merge(
+    {
+      Name        = "hippo-alb-${var.environment}"
+      Environment = var.environment
+    },
+    var.tags
+  )
 }
 
 # Creates a target group for the hippo website
@@ -187,7 +122,7 @@ resource "aws_lb_target_group" "main" {
   name        = "hippo-tg-${var.environment}"
   port        = 80
   protocol    = "HTTP"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = var.vpc_id
   target_type = "ip"
 
   health_check {
@@ -199,10 +134,13 @@ resource "aws_lb_target_group" "main" {
     matcher             = "200"
   }
 
-  tags = {
-    Name        = "hippo-tg-${var.environment}"
-    Environment = var.environment
-  }
+  tags = merge(
+    {
+      Name        = "hippo-tg-${var.environment}"
+      Environment = var.environment
+    },
+    var.tags
+  )
 }
 
 # Creates a listener for the ALB
@@ -249,10 +187,13 @@ resource "aws_ecs_task_definition" "hippo" {
     }
   ])
 
-  tags = {
-    Name        = "hippo-task-def-${var.environment}"
-    Environment = var.environment
-  }
+  tags = merge(
+    {
+      Name        = "hippo-task-def-${var.environment}"
+      Environment = var.environment
+    },
+    var.tags
+  )
 }
 
 # Creates an ECS service for the hippo website
@@ -264,7 +205,7 @@ resource "aws_ecs_service" "hippo" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+    subnets          = var.public_subnet_ids
     security_groups  = [aws_security_group.ecs_tasks.id]
     assign_public_ip = true
   }
@@ -277,8 +218,11 @@ resource "aws_ecs_service" "hippo" {
 
   depends_on = [aws_lb_listener.main]
 
-  tags = {
-    Name        = "hippo-service-${var.environment}"
-    Environment = var.environment
-  }
+  tags = merge(
+    {
+      Name        = "hippo-service-${var.environment}"
+      Environment = var.environment
+    },
+    var.tags
+  )
 }

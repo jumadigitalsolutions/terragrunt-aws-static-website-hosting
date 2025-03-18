@@ -2,89 +2,307 @@ name: Infrastructure - ECS Fargate
 
 on:
   workflow_dispatch: # Allows manually triggering the workflow
+    inputs: # Declare inputs for the workflow
+      branch:
+        description: 'Default Branch to run the workflow from'
+        required: true
+        default: 'dev' # Defaults to dev to avoid any unexpected changes to prod
+        type: string
+
   push: # Triggers the workflow on a push to the main branch  
-    branches: [ main ]
-    paths: # Only trigger on ECS Fargate infrastructure changes
-      - 'terragrunt/live/*/ecs-fargate/**'
+    branches: [ main, dev ]
+    paths: # Only triggers the pipeline upon ECS-Fargate code changes
       - 'terragrunt/modules/ecs-fargate/**'
+      - 'terragrunt/live/**/ecs-fargate/**'
       - '.github/workflows/infra-ecs-fargate.yml'
-      pull_request: # Same as push triggers, but for PR validation
-      branches: [ main ]
-    paths: # Validate infrastructure changes in PRs
-      - 'terragrunt/live/*/ecs-fargate/**'
+  pull_request: # Same as push triggers, but for PR validation
+    branches: [ main, dev ]
+    paths:  # Only triggers the pipeline upon ECS-Fargate code changes
       - 'terragrunt/modules/ecs-fargate/**'
+      - 'terragrunt/live/**/ecs-fargate/**'
       - '.github/workflows/infra-ecs-fargate.yml'
 
 # Security context for AWS authentication
 permissions:
-  id-token: write  # Required for OIDC token exchange to assume AWS role
-  contents: read   # Repository access
+  security-events: write    # Required for uploading SARIF results
+  pull-requests: read       # Required for PR comments
+  contents: write           # Required for checkout
+  id-token: write           # Required for OIDC AWS auth
+  statuses: write           # Required for commit statuses
+  actions: read             # Required for workflow runs
+  pages: write              # For documentation if needed
+  checks: write             # Required for detailed SARIF results
 
 env:
-  AWS_REGION: us-east-1  # Default deployment region
+  tf_version: 1.11.2 # Terraform version
+  tg_version: 0.75.10 # Terragrunt version     
+  module_dir: ecs-fargate # Module directory name
 
 jobs:
-  deploy-dev:
-    name: Deploy Dev Infrastructure
+  # Setup job to determine variables
+  setup:
+    name: Setup Variables
     runs-on: ubuntu-latest
-    environment: dev  # Leverage GitHub environment to deploy to dev environment, and manage environment specific variables, enabling manual approval for prod deployment
-    
+    outputs:
+      branch: ${{ steps.set_variables.outputs.branch }}
     steps:
-    - uses: actions/checkout@v3  # Checkout code
+      - id: set_variables
+        name: Set Default Variables
+        env:
+          BRANCH: ${{ inputs.branch }}
+        run: |
+          echo "branch=${BRANCH:-dev}" >> $GITHUB_OUTPUT
 
-    # Environment specific AWS credential setup using GitHub OIDC
+  # Terragrunt HCL Format Checks for DEV Environment
+  check-dev-code:
+    name: Check Dev Infrastructure Code
+    runs-on: ubuntu-latest
+    environment: dev
+    needs: [setup]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.setup.outputs.branch }}
+
+      - name: Set environment name
+        id: env_name
+        run: echo "environment=dev" >> $GITHUB_OUTPUT
+
+      - name: Check terragrunt HCL for DEV Environment
+        uses: gruntwork-io/terragrunt-action@v2
+        with:
+          tf_version: ${{ env.tf_version }}
+          tg_version: ${{ env.tg_version }}
+          tg_command: 'hclfmt --check --non-interactive --diff'
+          tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ env.module_dir }}
+
+  # Security scanning for DEV environment
+  security-scan-dev:
+    name: Security Scan Dev
+    runs-on: ubuntu-latest
+    environment: dev
+    needs: [setup]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.setup.outputs.branch }}
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ env.module_dir }}
+          quiet: true
+          output_format: cli,sarif
+          output_file_path: console,checkov-dev-results.sarif
+          soft_fail: true
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: checkov-dev-results.sarif
+          wait-for-processing: true
+        continue-on-error: false
+
+  # Plan DEV infrastructure changes
+  plan-dev:
+    name: Plan Dev Infrastructure
+    runs-on: ubuntu-latest
+    environment: dev
+    needs: [check-dev-code, security-scan-dev, setup]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ needs.setup.outputs.branch }}
+
+    - name: Set environment name
+      id: env_name
+      run: echo "environment=dev" >> $GITHUB_OUTPUT
+
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
-        aws-region: ${{ env.AWS_REGION }}
-        role-session-name: GitHubActionsSession
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
+        aws-region: ${{ vars.AWS_REGION }}
+        role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
 
-    # Security scanning for infrastructure-as-code, checking for security vulnerabilities and misconfigurations
-    - name: Run Checkov
-      if: github.event_name == 'pull_request'  # PR validation only
-      uses: bridgecrewio/checkov-action@v2
-      with:
-        directory: terragrunt/environments/dev/ecs-fargate
-        quiet: true  # Reduce output noise
-
-    # Infrastructure deployment, using Terragrunt to deploy the infrastructure
-    - name: Terragrunt Apply
+    - name: Terragrunt Plan
       uses: gruntwork-io/terragrunt-action@v2
       with:
-        tf_version: 1.11.2  # Pinned for stability
-        tg_version: 0.75.6
-        tg_dir: terragrunt/environments/dev/ecs-fargate
-        tg_command: 'apply -auto-approve'
-
-  # Production deployment follows the same pattern as the dev deployment
-  deploy-prod:
-    name: Deploy Prod Infrastructure
-    needs: deploy-dev  # Sequential deployment flow
-    runs-on: ubuntu-latest
-    environment: prod  # Production environment
+        tf_version: ${{ env.tf_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ env.module_dir }}
+        tg_comment: true # Comment on the PR with the Terragrunt plan output
+        tg_command: 'run-all plan -out=tfplan --terragrunt-non-interactive'
     
+    - name: Upload Terraform Plan
+      uses: actions/upload-artifact@v4
+      with:
+        name: dev-tfplan
+        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ env.module_dir }}/tfplan
+        retention-days: 1
+
+  # Apply DEV infrastructure changes
+  apply-dev:
+    name: Apply Dev Infrastructure
+    needs: [plan-dev, setup]
+    runs-on: ubuntu-latest
+    environment: dev
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ needs.setup.outputs.branch }}
+
+    - name: Set environment name
+      id: env_name
+      run: echo "environment=dev" >> $GITHUB_OUTPUT
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-role
-        aws-region: ${{ env.AWS_REGION }}
-        role-session-name: GitHubActionsSession
-
-    - name: Run Checkov
-      if: github.event_name == 'pull_request'
-      uses: bridgecrewio/checkov-action@v2
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
+        aws-region: ${{ vars.AWS_REGION }}
+        role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
+    
+    - name: Download Terraform Plan
+      uses: actions/download-artifact@v4
       with:
-        directory: terragrunt/environments/prod/ecs-fargate
-        quiet: true
+        name: dev-tfplan
+        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ env.module_dir }}
 
     - name: Terragrunt Apply
       uses: gruntwork-io/terragrunt-action@v2
       with:
-        tf_version: 1.11.2
-        tg_version: 0.75.6
-        tg_dir: terragrunt/environments/prod/ecs-fargate
-        tg_command: 'apply -auto-approve' 
+        tf_version: ${{ env.tf_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ env.module_dir }}
+        tg_command: 'run-all apply tfplan --terragrunt-non-interactive'
+
+  # Terragrunt HCL Format Checks for PROD Environment
+  check-prod-code:
+    name: Check Prod Infrastructure Code
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: [apply-dev, setup]  # Only start after dev environment is fully deployed
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.setup.outputs.branch }}
+
+      - name: Check terragrunt HCL for PROD Environment
+        uses: gruntwork-io/terragrunt-action@v2
+        with:
+          tf_version: ${{ env.tf_version }}
+          tg_version: ${{ env.tg_version }}
+          tg_command: 'hclfmt --check --non-interactive --diff'
+          tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/prod/${{ env.module_dir }}
+
+  # Security scanning for PROD environment
+  security-scan-prod:
+    name: Security Scan Prod
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: [apply-dev, setup]  # Only start after dev environment is fully deployed
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.setup.outputs.branch }}
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: terragrunt/live/${{ vars.AWS_REGION }}/prod/${{ env.module_dir }}
+          quiet: true
+          output_format: cli,sarif
+          output_file_path: console,checkov-prod-results.sarif
+          soft_fail: true
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: checkov-prod-results.sarif
+          wait-for-processing: true
+        continue-on-error: false
+
+  # Plan PROD infrastructure changes
+  plan-prod:
+    name: Plan Prod Infrastructure
+    needs: [check-prod-code, security-scan-prod, setup]  # Wait for both prod checks to complete
+    runs-on: ubuntu-latest
+    environment: prod
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ needs.setup.outputs.branch }}
+
+    - name: Set environment name
+      id: env_name
+      run: echo "environment=prod" >> $GITHUB_OUTPUT
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
+        aws-region: ${{ vars.AWS_REGION }}
+        role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
+
+    - name: Terragrunt Plan
+      uses: gruntwork-io/terragrunt-action@v2
+      with:
+        tf_version: ${{ env.tf_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ env.module_dir }}
+        tg_comment: true
+        tg_command: 'run-all plan -out=tfplan --terragrunt-non-interactive'
+    
+    - name: Upload Terraform Plan
+      uses: actions/upload-artifact@v4
+      with:
+        name: prod-tfplan
+        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ env.module_dir }}/tfplan
+        retention-days: 1
+
+  # Apply PROD infrastructure changes
+  apply-prod:
+    name: Apply Prod Infrastructure
+    needs: [plan-prod, setup]
+    runs-on: ubuntu-latest
+    environment: prod
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ needs.setup.outputs.branch }}
+
+    - name: Set environment name
+      id: env_name
+      run: echo "environment=prod" >> $GITHUB_OUTPUT
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
+        aws-region: ${{ vars.AWS_REGION }}
+        role-session-name: GitHubActionsSessionForTerragruntAWSStaticWebsiteHosting-${{ steps.env_name.outputs.environment }}
+    
+    - name: Download Terraform Plan
+      uses: actions/download-artifact@v4
+      with:
+        name: prod-tfplan
+        path: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ env.module_dir }}
+
+    - name: Terragrunt Apply
+      uses: gruntwork-io/terragrunt-action@v2
+      with:
+        tf_version: ${{ env.tf_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/${{ steps.env_name.outputs.environment }}/${{ env.module_dir }}
+        tg_command: 'run-all apply tfplan --terragrunt-non-interactive' 
