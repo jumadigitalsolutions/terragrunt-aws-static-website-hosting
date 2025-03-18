@@ -1,20 +1,5 @@
 # ECS Fargate specific configuration for dev
-cluster_name: "hippo-cluster-dev"
-service_name: "hippo-service-dev"
-task_family: "hippo-task-dev"
-container_name: "hippo-container"
-container_port: 80
-desired_count: 2
-cpu: 256
-memory: 512
-health_check_path: "/health"
-health_check_port: 80
-
-# Security group configuration
-security_group_ids: []  # Will be created by the module if empty
-
-# Additional tags
-tags:
-  Component: "ECS-Fargate"
-  Application: "Hippo-App"
-  Service: "Web" 
+task_cpu: 256
+task_memory: 512
+service_desired_count: 2
+image_tag: "latest"
