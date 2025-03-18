@@ -1,4 +1,4 @@
-name: Infrastructure - ECS Fargate
+name: Infrastructure - S3 CloudFront
 
 on:
   workflow_dispatch: # Allows manually triggering the workflow
@@ -10,18 +10,18 @@ on:
         type: choice
         options:
           - vpc
-          - s3-cloudfront
+          - ecs-fargate
           - ecs-fargate
 
   push: # Triggers the workflow on a push to the main branch  
     branches: [ main, dev ]
-    paths: # Only triggers the pipeline upon ECS-Fargate code changes
+    paths: # Only triggers the pipeline upon ecs-fargate code changes
       - 'terragrunt/modules/ecs-fargate/**'
       - 'terragrunt/live/**/ecs-fargate/**'
       - '.github/workflows/infra-ecs-fargate.yml'
   pull_request: # Same as push triggers, but for PR validation
     branches: [ main, dev ]
-    paths:  # Only triggers the pipeline upon ECS-Fargate code changes
+    paths:  # Only triggers the pipeline upon ecs-fargate code changes
       - 'terragrunt/modules/ecs-fargate/**'
       - 'terragrunt/live/**/ecs-fargate/**'
       - '.github/workflows/infra-ecs-fargate.yml'
@@ -61,7 +61,6 @@ jobs:
   check-dev-code:
     name: Check Dev Infrastructure Code
     runs-on: ubuntu-latest
-    environment: dev
     needs: [setup]
     steps:
       - name: Checkout
@@ -83,7 +82,6 @@ jobs:
   security-scan-dev:
     name: Security Scan Dev
     runs-on: ubuntu-latest
-    environment: dev
     needs: [setup]
     steps:
       - name: Checkout
@@ -109,7 +107,6 @@ jobs:
   plan-dev:
     name: Plan Dev Infrastructure
     runs-on: ubuntu-latest
-    environment: dev
     needs: [check-dev-code, security-scan-dev, setup]
     steps:
     - name: Checkout
@@ -119,10 +116,19 @@ jobs:
       id: env_name
       run: echo "environment=dev" >> $GITHUB_OUTPUT
 
+    - name: Debug directory structure
+      run: |
+        echo "Working directory: $(pwd)"
+        ls -la
+        echo "Checking terragrunt directories:"
+        find terragrunt -type d | sort
+        echo "Looking for terragrunt.hcl files:"
+        find terragrunt -name "terragrunt.hcl" | sort
+
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
+        role-to-assume: arn:aws:iam::${{ secrets.DEV_AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
         aws-region: ${{ vars.AWS_REGION }}
         role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
 
@@ -139,7 +145,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: dev-tfplan
-        path: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ needs.setup.outputs.deploy_module }}/tfplan
+        path: terragrunt/live/${{ vars.AWS_REGION || 'us-east-1' }}/dev/${{ needs.setup.outputs.deploy_module }}/tfplan
         retention-days: 1
 
   # Apply DEV infrastructure changes
@@ -156,10 +162,19 @@ jobs:
       id: env_name
       run: echo "environment=dev" >> $GITHUB_OUTPUT
 
+    - name: Debug directory structure
+      run: |
+        echo "Working directory: $(pwd)"
+        ls -la
+        echo "Checking terragrunt directories:"
+        find terragrunt -type d | sort
+        echo "Looking for terragrunt.hcl files:"
+        find terragrunt -name "terragrunt.hcl" | sort
+
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
+        role-to-assume: arn:aws:iam::${{ secrets.PROD_AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
         aws-region: ${{ vars.AWS_REGION }}
         role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
     
@@ -167,14 +182,14 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: dev-tfplan
-        path: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ needs.setup.outputs.deploy_module }}
+        path: terragrunt/live/${{ vars.AWS_REGION || 'us-east-1' }}/dev/${{ needs.setup.outputs.deploy_module }}
 
     - name: Terragrunt Apply
       uses: gruntwork-io/terragrunt-action@v2
       with:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
-        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/dev/${{ needs.setup.outputs.deploy_module }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION || 'us-east-1' }}/dev/${{ needs.setup.outputs.deploy_module }}
         tg_command: 'run-all apply tfplan --terragrunt-non-interactive'
 
   # Terragrunt HCL Format Checks for PROD Environment
@@ -226,7 +241,6 @@ jobs:
     name: Plan Prod Infrastructure
     needs: [check-prod-code, security-scan-prod, setup]  # Wait for both prod checks to complete
     runs-on: ubuntu-latest
-    environment: prod
     if: github.ref == 'refs/heads/main'
     steps:
     - name: Checkout
@@ -293,4 +307,4 @@ jobs:
         tf_version: ${{ env.tf_version }}
         tg_version: ${{ env.tg_version }}
         tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/prod/${{ needs.setup.outputs.deploy_module }}
-        tg_command: 'run-all apply tfplan --terragrunt-non-interactive' 
+        tg_command: 'run-all apply tfplan --terragrunt-non-interactive'
