@@ -58,15 +58,14 @@ resource "aws_s3_bucket_policy" "website" {
   })
 }
 
-# Create a new Route53 hosted zone for the domain
-resource "aws_route53_zone" "website" {
+# Use an existing Route53 hosted zone
+data "aws_route53_zone" "selected" {
   name = var.domain
-  tags = var.tags
 }
 
 # Create DNS record for bucket name subdomain
 resource "aws_route53_record" "bucket_subdomain" {
-  zone_id = aws_route53_zone.website.zone_id
+  zone_id = data.aws_route53_zone.selected.zone_id
   name    = "${aws_s3_bucket.website.bucket}.${var.domain}"
   type    = "A"
 
@@ -101,7 +100,7 @@ resource "aws_route53_record" "cert_validation" {
     }
   }
 
-  zone_id = aws_route53_zone.website.zone_id
+  zone_id = data.aws_route53_zone.selected.zone_id
   name    = each.value.name
   type    = each.value.type
   records = [each.value.record]
@@ -177,7 +176,7 @@ resource "aws_cloudfront_distribution" "website" {
 
 # Create Route53 alias record pointing to the CloudFront distribution
 resource "aws_route53_record" "cloudfront" {
-  zone_id = aws_route53_zone.website.zone_id
+  zone_id = data.aws_route53_zone.selected.zone_id
   name    = format("hippo-cloudfront-%s.%s", var.environment, var.domain)
   type    = "A"
 
