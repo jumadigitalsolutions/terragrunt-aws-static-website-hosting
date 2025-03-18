@@ -23,9 +23,3 @@ variable "acm_certificate_domain" {
   type        = string
   default     = ""
 }
-
-variable "use_custom_domain" {
-  description = "Whether to use a custom domain with CloudFront"
-  type        = bool
-  default     = true
-}

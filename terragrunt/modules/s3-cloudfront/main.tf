@@ -154,8 +154,8 @@ resource "aws_cloudfront_distribution" "website" {
 
   tags = var.tags
 
-  # Wait for certificate validation before creating the distribution only if using custom domain
-  depends_on = var.use_custom_domain ? [aws_acm_certificate_validation.cloudfront[0]] : []
+  # Wait for certificate validation before creating the distribution
+  depends_on = [aws_acm_certificate_validation.cloudfront]
 }
 
 # Create Route53 alias record pointing to the CloudFront distribution
