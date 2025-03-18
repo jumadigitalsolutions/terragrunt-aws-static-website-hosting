@@ -62,15 +62,11 @@ jobs:
         push: true
         tags: ${{ steps.set-image.outputs.image_tag }}
 
-    - name: Download Task Definition
-      run: |
-        aws ecs describe-task-definition --task-definition hippo-website-dev --query taskDefinition > task-definition.json
-
     - name: Render Task Definition
       id: render-task-def
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
-        task-definition: task-definition.json
+        task-definition-arn: arn:aws:ecs:${{ env.AWS_REGION }}:${{ env.AWS_ACCOUNT_ID }}:task-definition/hippo-website-dev
         container-name: hippo-website
         image: ${{ steps.set-image.outputs.image_tag }}
 
@@ -120,15 +116,11 @@ jobs:
         docker tag $DEV_IMAGE $PROD_IMAGE
         docker push $PROD_IMAGE
 
-    - name: Download Task Definition
-      run: |
-        aws ecs describe-task-definition --task-definition hippo-website-prod --query taskDefinition > task-definition.json
-
     - name: Render Task Definition
       id: render-task-def
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
-        task-definition: task-definition.json
+        task-definition-arn: arn:aws:ecs:${{ env.AWS_REGION }}:${{ env.AWS_ACCOUNT_ID }}:task-definition/hippo-website-prod
         container-name: hippo-website
         image: ${{ steps.set-image.outputs.image_tag }}
 
