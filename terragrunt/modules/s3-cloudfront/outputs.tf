@@ -25,21 +25,21 @@ output "cloudfront_custom_domain" {
 
 output "route53_zone_id" {
   description = "ID of the Route53 hosted zone"
-  value       = aws_route53_zone.website.zone_id
+  value       = data.aws_route53_zone.selected.zone_id
 }
 
 output "route53_zone_name" {
   description = "Name of the Route53 hosted zone"
-  value       = aws_route53_zone.website.name
+  value       = data.aws_route53_zone.selected.name
 }
 
 output "nameservers" {
-  description = "The nameservers for the Route53 zone - update these in your GoDaddy domain configuration"
-  value       = aws_route53_zone.website.name_servers
+  description = "The nameservers for the Route53 zone"
+  value       = data.aws_route53_zone.selected.name_servers
 }
 
 output "certificate_validation_records" {
-  description = "The DNS records needed for certificate validation (can be created manually in GoDaddy if needed)"
+  description = "The DNS records needed for certificate validation"
   value = {
     for dvo in aws_acm_certificate.cloudfront.domain_validation_options : dvo.domain_name => {
       name   = dvo.resource_record_name
