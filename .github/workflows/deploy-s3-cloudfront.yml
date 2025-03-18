@@ -3,7 +3,7 @@ name: Deploy to S3 + CloudFront
 on:
   workflow_dispatch: # Allows manually triggering the workflow
   push: # Triggers the workflow on a push to the main branch  
-    branches: [ main ]
+    branches: [ main, dev ]
     paths: # Trigger when application code changes
       - 'src/**'
       - '.github/workflows/deploy-s3-cloudfront.yml'

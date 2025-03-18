@@ -55,20 +55,5 @@ inputs = {
   enable_dns_support   = try(local.vars.enable_dns_support, true)
   enable_vpn_gateway   = try(local.vars.enable_vpn_gateway, false)
 
-  tags = merge(
-    try(local.vars.tags, {}),
-    {
-      "kubernetes.io/cluster/${local.env}-cluster" = "shared"
-    }
-  )
-
-  private_subnet_tags = {
-    "kubernetes.io/cluster/${local.env}-cluster" = "shared"
-    "kubernetes.io/role/internal-elb"            = "1"
-  }
-
-  public_subnet_tags = {
-    "kubernetes.io/cluster/${local.env}-cluster" = "shared"
-    "kubernetes.io/role/elb"                     = "1"
-  }
+  tags = local.vars.tags
 }

@@ -108,13 +108,7 @@ resource "aws_lb" "main" {
   security_groups    = [aws_security_group.alb.id]
   subnets            = var.public_subnet_ids
 
-  tags = merge(
-    {
-      Name        = "hippo-alb-${var.environment}"
-      Environment = var.environment
-    },
-    var.tags
-  )
+  tags = var.tags
 }
 
 # Creates a target group for the hippo website
@@ -187,13 +181,7 @@ resource "aws_ecs_task_definition" "hippo" {
     }
   ])
 
-  tags = merge(
-    {
-      Name        = "hippo-task-def-${var.environment}"
-      Environment = var.environment
-    },
-    var.tags
-  )
+  tags = var.tags
 }
 
 # Creates an ECS service for the hippo website
@@ -218,11 +206,5 @@ resource "aws_ecs_service" "hippo" {
 
   depends_on = [aws_lb_listener.main]
 
-  tags = merge(
-    {
-      Name        = "hippo-service-${var.environment}"
-      Environment = var.environment
-    },
-    var.tags
-  )
+  tags = var.tags
 }

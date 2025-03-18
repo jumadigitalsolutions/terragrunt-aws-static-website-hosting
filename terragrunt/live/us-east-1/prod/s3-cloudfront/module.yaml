@@ -1,12 +1,2 @@
 # S3 + CloudFront specific configuration for prod
 bucket_name: "hippo-website-prod"
-cloudfront_price_class: "PriceClass_200"
-error_document: "error.html"
-index_document: "index.html"
-cors_allowed_headers:
-  - "Authorization"
-  - "Content-Length"
-cors_allowed_methods:
-  - "GET"
-  - "HEAD"
-cors_max_age_seconds: 3600 

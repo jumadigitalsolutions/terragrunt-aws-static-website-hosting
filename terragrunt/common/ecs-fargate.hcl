@@ -52,10 +52,10 @@ inputs = {
   
   # Other optional inputs
   region              = local.region
-  task_cpu            = 256
-  task_memory         = 512
-  service_desired_count = 1
-  image_tag           = "latest"
+  task_cpu            = local.vars.task_cpu
+  task_memory         = local.vars.task_memory
+  service_desired_count = local.vars.service_desired_count
+  image_tag           = local.vars.image_tag
   
   # Additional tags
   tags = local.default_tags
