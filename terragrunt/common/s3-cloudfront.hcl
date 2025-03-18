@@ -27,7 +27,6 @@ inputs = {
   environment             = local.env
   bucket_name             = local.vars.bucket_name
   acm_certificate_domain  = try(local.vars.acm_certificate_domain, "")
-  use_custom_domain       = try(local.vars.use_custom_domain, true)
   tags = merge(
     local.vars.tags,
     try(local.vars.bucket_tags, {})

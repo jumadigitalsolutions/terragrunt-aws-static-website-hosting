@@ -67,8 +67,6 @@ resource "aws_route53_zone" "website" {
 # Create ACM certificate for the CloudFront distribution
 # Note: CloudFront distributions use certificates in us-east-1 region
 resource "aws_acm_certificate" "cloudfront" {
-  count             = var.use_custom_domain ? 1 : 0
-  provider          = aws.us_east_1
   domain_name       = coalesce(var.acm_certificate_domain, "*.${var.domain}")
   validation_method = "DNS"
 
@@ -81,13 +79,13 @@ resource "aws_acm_certificate" "cloudfront" {
 
 # Create DNS validation records for the ACM certificate
 resource "aws_route53_record" "cert_validation" {
-  for_each = var.use_custom_domain ? {
-    for dvo in aws_acm_certificate.cloudfront[0].domain_validation_options : dvo.domain_name => {
+  for_each = {
+    for dvo in aws_acm_certificate.cloudfront.domain_validation_options : dvo.domain_name => {
       name   = dvo.resource_record_name
       record = dvo.resource_record_value
       type   = dvo.resource_record_type
     }
-  } : {}
+  }
 
   zone_id = aws_route53_zone.website.zone_id
   name    = each.value.name
@@ -98,10 +96,16 @@ resource "aws_route53_record" "cert_validation" {
 
 # Validate the ACM certificate
 resource "aws_acm_certificate_validation" "cloudfront" {
-  count                   = var.use_custom_domain ? 1 : 0
-  provider                = aws.us_east_1
-  certificate_arn         = aws_acm_certificate.cloudfront[0].arn
+  certificate_arn         = aws_acm_certificate.cloudfront.arn
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
+}
+
+# Add a wait time to ensure certificate validation is complete before creating CloudFront
+resource "time_sleep" "wait_for_certificate_validation" {
+  depends_on = [aws_acm_certificate_validation.cloudfront]
+
+  # Wait for 10 seconds as a precaution
+  create_duration = "10s"
 }
 
 # CDN Configuration - Updated to use OAC
@@ -112,8 +116,8 @@ resource "aws_cloudfront_distribution" "website" {
     origin_access_control_id = aws_cloudfront_origin_access_control.website.id
   }
 
-  # Conditionally use custom domain based on use_custom_domain variable
-  aliases = var.use_custom_domain ? [format("hippo-cloudfront-%s.%s", var.environment, var.domain)] : []
+  # Custom domain configuration
+  aliases = [format("hippo-cloudfront-%s.%s", var.environment, var.domain)]
 
   enabled             = true
   is_ipv6_enabled     = true
@@ -149,23 +153,21 @@ resource "aws_cloudfront_distribution" "website" {
     }
   }
 
-  # Conditionally use custom certificate based on use_custom_domain variable
+  # Certificate configuration
   viewer_certificate {
-    acm_certificate_arn            = var.use_custom_domain ? aws_acm_certificate_validation.cloudfront[0].certificate_arn : null
-    ssl_support_method             = var.use_custom_domain ? "sni-only" : null
-    minimum_protocol_version       = var.use_custom_domain ? "TLSv1.2_2021" : "TLSv1.2_2021"
-    cloudfront_default_certificate = var.use_custom_domain ? false : true
+    acm_certificate_arn      = aws_acm_certificate_validation.cloudfront.certificate_arn
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
   }
 
   tags = var.tags
 
-  # Wait for certificate validation before creating the distribution only if using custom domain
-  depends_on = var.use_custom_domain ? [aws_acm_certificate_validation.cloudfront[0]] : []
+  # Use a static depends_on list instead of a conditional expression
+  depends_on = [time_sleep.wait_for_certificate_validation]
 }
 
 # Create Route53 alias record pointing to the CloudFront distribution
 resource "aws_route53_record" "cloudfront" {
-  count   = var.use_custom_domain ? 1 : 0
   zone_id = aws_route53_zone.website.zone_id
   name    = format("hippo-cloudfront-%s.%s", var.environment, var.domain)
   type    = "A"

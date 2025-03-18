@@ -19,8 +19,8 @@ output "cloudfront_distribution_domain_name" {
 }
 
 output "cloudfront_custom_domain" {
-  description = "Custom domain for the CloudFront distribution, if enabled"
-  value       = var.use_custom_domain ? format("hippo-cloudfront-%s.%s", var.environment, var.domain) : "Not configured - using CloudFront default domain"
+  description = "Custom domain for the CloudFront distribution"
+  value       = format("hippo-cloudfront-%s.%s", var.environment, var.domain)
 }
 
 output "route53_zone_id" {
@@ -40,11 +40,11 @@ output "nameservers" {
 
 output "certificate_validation_records" {
   description = "The DNS records needed for certificate validation (can be created manually in GoDaddy if needed)"
-  value = var.use_custom_domain ? {
-    for dvo in aws_acm_certificate.cloudfront[0].domain_validation_options : dvo.domain_name => {
+  value = {
+    for dvo in aws_acm_certificate.cloudfront.domain_validation_options : dvo.domain_name => {
       name   = dvo.resource_record_name
       record = dvo.resource_record_value
       type   = dvo.resource_record_type
     }
-  } : "Certificate validation not configured"
+  }
 }

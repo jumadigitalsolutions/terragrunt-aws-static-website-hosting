@@ -23,9 +23,3 @@ variable "acm_certificate_domain" {
   type        = string
   default     = ""
 }
-
-variable "use_custom_domain" {
-  description = "Whether to configure CloudFront with custom domain and ACM certificate. Set to false while waiting for GoDaddy delegation."
-  type        = bool
-  default     = true
-}
