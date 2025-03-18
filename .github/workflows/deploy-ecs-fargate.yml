@@ -23,27 +23,29 @@ permissions:
   contents: read   # Repository access
 
 env:
-  AWS_REGION: us-east-1  # Default deployment region
   IMAGE_TAG: ${{ github.sha }}  # Commit-based tagging
   ECR_REPOSITORY: hippo-website
-  AWS_ACCOUNT_ID: ${{ env.AWS_ACCOUNT_ID }}
 
 jobs:
   deploy-dev:
     name: Deploy to Dev
     runs-on: ubuntu-latest
     environment: dev
-    if: github.event_name != 'pull_request' || github.event_name == 'workflow_dispatch'
+    if: github.event_name != 'pull_request'
     
     steps:
     - uses: actions/checkout@v3
 
+    - name: Set environment name
+      id: env_name
+      run: echo "environment=dev" >> $GITHUB_OUTPUT
+
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/github-actions-role
-        aws-region: ${{ env.AWS_REGION }}
-        role-session-name: GitHubActionsSession
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
+        aws-region: ${{ vars.AWS_REGION }}
+        role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
 
     - name: Login to Amazon ECR
       id: login-ecr
@@ -54,26 +56,23 @@ jobs:
       run: |
         echo "image_tag=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}-dev:${{ env.IMAGE_TAG }}" >> $GITHUB_OUTPUT
 
-    - name: Build, Test and Push to ECR
-      uses: ./.github/actions/build-test-and-push-to-ecr.yml
+    - name: Build and push image to Amazon ECR
+      uses: docker/build-push-action@v5
       with:
-        image-tag: ${{ steps.set-image.outputs.image_tag }}
-
-    - name: Render task definition
-      id: render-task-def
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
-      with:
-        task-definition-arn: arn:aws:ecs:${{ env.AWS_REGION }}:${{ env.AWS_ACCOUNT_ID }}:task-definition/hippo-website-dev
-        container-name: hippo-container
-        image: ${{ steps.set-image.outputs.image_tag }}
+        context: .
+        push: true
+        tags: ${{ steps.set-image.outputs.image_tag }}
 
     - name: Deploy to ECS
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-      with:
-        task-definition: ${{ steps.render-task-def.outputs.task-definition-arn }}
-        service: hippo-service-dev
-        cluster: hippo-cluster-dev
-        wait-for-service-stability: true
+      run: |
+        # Navigate to the terragrunt directory
+        cd terragrunt/live/us-east-1/dev/ecs-fargate
+
+        # Update the image_tag variable in the module.yaml
+        echo "image_tag: \"${{ env.IMAGE_TAG }}\"" > image_tag.auto.tfvars.yaml
+
+        # Run terragrunt apply to update the ECS service with the new image
+        terragrunt apply -auto-approve -input=false
 
   deploy-prod:
     name: Deploy to Production
@@ -85,12 +84,16 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Set environment name
+      id: env_name
+      run: echo "environment=prod" >> $GITHUB_OUTPUT
+
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/github-actions-role
-        aws-region: ${{ env.AWS_REGION }}
-        role-session-name: GitHubActionsSession
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
+        aws-region: ${{ vars.AWS_REGION }}
+        role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
 
     - name: Login to Amazon ECR
       id: login-ecr
@@ -109,18 +112,13 @@ jobs:
         docker tag $DEV_IMAGE $PROD_IMAGE
         docker push $PROD_IMAGE
 
-    - name: Render task definition
-      id: render-task-def
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
-      with:
-        task-definition-arn: arn:aws:ecs:${{ env.AWS_REGION }}:${{ env.AWS_ACCOUNT_ID }}:task-definition/hippo-website-prod
-        container-name: hippo-container
-        image: ${{ steps.set-image.outputs.image_tag }}
-
     - name: Deploy to ECS
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-      with:
-        task-definition: ${{ steps.render-task-def.outputs.task-definition-arn }}
-        service: hippo-service-prod
-        cluster: hippo-cluster-prod
-        wait-for-service-stability: true
+      run: |
+        # Navigate to the terragrunt directory
+        cd terragrunt/live/us-east-1/prod/ecs-fargate
+
+        # Update the image_tag variable in the module.yaml
+        echo "image_tag: \"${{ env.IMAGE_TAG }}\"" > image_tag.auto.tfvars.yaml
+
+        # Run terragrunt apply to update the ECS service with the new image
+        terragrunt apply -auto-approve -input=false
