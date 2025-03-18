@@ -9,6 +9,17 @@ variable "region" {
   default     = "us-east-1"
 }
 
+variable "domain" {
+  description = "Domain name for the ECS service"
+  type        = string
+}
+
+variable "acm_certificate_domain" {
+  description = "Domain for the ACM certificate (defaults to *.domain)"
+  type        = string
+  default     = ""
+}
+
 variable "task_cpu" {
   description = "CPU units for the ECS task (256 = 0.25 vCPU)"
   type        = number

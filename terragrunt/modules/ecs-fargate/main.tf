@@ -1,3 +1,46 @@
+# Setup DNS for the ECS service
+# Create a new Route53 hosted zone for the domain if it doesn't exist
+resource "aws_route53_zone" "ecs" {
+  name = var.domain
+  tags = var.tags
+}
+
+# Create ACM certificate for the ECS service
+resource "aws_acm_certificate" "ecs" {
+  domain_name               = coalesce(var.acm_certificate_domain, "*.${var.domain}")
+  subject_alternative_names = ["hippo-website-ecs-${var.environment}.${var.domain}"]
+  validation_method         = "DNS"
+
+  tags = var.tags
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Create DNS validation records for the ACM certificate
+resource "aws_route53_record" "cert_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.ecs.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  zone_id = aws_route53_zone.ecs.zone_id
+  name    = each.value.name
+  type    = each.value.type
+  records = [each.value.record]
+  ttl     = 60
+}
+
+# Validate the ACM certificate
+resource "aws_acm_certificate_validation" "ecs" {
+  certificate_arn         = aws_acm_certificate.ecs.arn
+  validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
+}
+
 # Creates an ECR repository for the hippo website
 resource "aws_ecr_repository" "hippo" {
   name                 = "hippo-website-${var.environment}"
@@ -44,31 +87,35 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
 
 # Creates a security group for the ALB
 resource "aws_security_group" "alb" {
-  name        = "hippo-alb-sg-${var.environment}"
-  description = "Security group for ALB"
+  name        = "hippo-alb-${var.environment}"
+  description = "Security group for the ALB"
   vpc_id      = var.vpc_id
 
+  # Allow inbound HTTP traffic
   ingress {
+    protocol    = "tcp"
     from_port   = 80
     to_port     = 80
-    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Allow inbound HTTPS traffic
+  ingress {
+    protocol    = "tcp"
+    from_port   = 443
+    to_port     = 443
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Allow all outbound traffic
   egress {
+    protocol    = "-1"
     from_port   = 0
     to_port     = 0
-    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = merge(
-    {
-      Name        = "hippo-alb-sg-${var.environment}"
-      Environment = var.environment
-    },
-    var.tags
-  )
+  tags = var.tags
 }
 
 # Creates a security group for the ECS tasks
@@ -100,7 +147,7 @@ resource "aws_security_group" "ecs_tasks" {
   )
 }
 
-# Creates an ALB for the hippo website
+# Creates an ALB for the ECS service
 resource "aws_lb" "main" {
   name               = "hippo-alb-${var.environment}"
   internal           = false
@@ -137,15 +184,35 @@ resource "aws_lb_target_group" "main" {
   )
 }
 
-# Creates a listener for the ALB
+# Add HTTPS listener to the ALB
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
+  certificate_arn   = aws_acm_certificate_validation.ecs.certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.main.arn
+  }
+
+  depends_on = [aws_acm_certificate_validation.ecs]
+}
+
+# Create HTTP listener that redirects to HTTPS
 resource "aws_lb_listener" "main" {
   load_balancer_arn = aws_lb.main.arn
   port              = 80
   protocol          = "HTTP"
 
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.main.arn
+    type = "redirect"
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
   }
 }
 
@@ -207,4 +274,17 @@ resource "aws_ecs_service" "hippo" {
   depends_on = [aws_lb_listener.main]
 
   tags = var.tags
+}
+
+# Create Route53 DNS record pointing to the ALB
+resource "aws_route53_record" "ecs" {
+  zone_id = aws_route53_zone.ecs.zone_id
+  name    = "hippo-website-ecs-${var.environment}.${var.domain}"
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.main.dns_name
+    zone_id                = aws_lb.main.zone_id
+    evaluate_target_health = false
+  }
 }

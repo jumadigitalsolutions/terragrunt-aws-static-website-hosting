@@ -64,11 +64,25 @@ resource "aws_route53_zone" "website" {
   tags = var.tags
 }
 
+# Create DNS record for bucket name subdomain
+resource "aws_route53_record" "bucket_subdomain" {
+  zone_id = aws_route53_zone.website.zone_id
+  name    = "${aws_s3_bucket.website.bucket}.${var.domain}"
+  type    = "A"
+
+  alias {
+    name                   = aws_cloudfront_distribution.website.domain_name
+    zone_id                = aws_cloudfront_distribution.website.hosted_zone_id
+    evaluate_target_health = false
+  }
+}
+
 # Create ACM certificate for the CloudFront distribution
 # Note: CloudFront distributions use certificates in us-east-1 region
 resource "aws_acm_certificate" "cloudfront" {
-  domain_name       = coalesce(var.acm_certificate_domain, "*.${var.domain}")
-  validation_method = "DNS"
+  domain_name               = coalesce(var.acm_certificate_domain, "*.${var.domain}")
+  subject_alternative_names = ["${aws_s3_bucket.website.bucket}.${var.domain}"]
+  validation_method         = "DNS"
 
   tags = var.tags
 
@@ -109,7 +123,10 @@ resource "aws_cloudfront_distribution" "website" {
   }
 
   # Custom domain configuration
-  aliases = [format("hippo-cloudfront-%s.%s", var.environment, var.domain)]
+  aliases = [
+    format("hippo-cloudfront-%s.%s", var.environment, var.domain),
+    "${aws_s3_bucket.website.bucket}.${var.domain}"
+  ]
 
   enabled             = true
   is_ipv6_enabled     = true

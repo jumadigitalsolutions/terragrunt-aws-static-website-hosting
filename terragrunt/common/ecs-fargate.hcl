@@ -50,6 +50,10 @@ inputs = {
   vpc_id            = dependency.vpc.outputs.vpc_id
   public_subnet_ids = dependency.vpc.outputs.public_subnets
   
+  # Domain configuration
+  domain                 = local.vars.domain
+  acm_certificate_domain = try(local.vars.acm_certificate_domain, "")
+  
   # Other optional inputs
   region              = local.region
   task_cpu            = local.vars.task_cpu
