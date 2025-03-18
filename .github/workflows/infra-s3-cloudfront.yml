@@ -61,7 +61,6 @@ jobs:
   check-dev-code:
     name: Check Dev Infrastructure Code
     runs-on: ubuntu-latest
-    environment: dev
     needs: [setup]
     steps:
       - name: Checkout
@@ -83,7 +82,6 @@ jobs:
   security-scan-dev:
     name: Security Scan Dev
     runs-on: ubuntu-latest
-    environment: dev
     needs: [setup]
     steps:
       - name: Checkout
