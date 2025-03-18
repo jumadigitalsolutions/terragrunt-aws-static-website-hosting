@@ -107,7 +107,6 @@ jobs:
   plan-dev:
     name: Plan Dev Infrastructure
     runs-on: ubuntu-latest
-    environment: dev
     needs: [check-dev-code, security-scan-dev, setup]
     steps:
     - name: Checkout
@@ -129,7 +128,7 @@ jobs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
+        role-to-assume: arn:aws:iam::${{ secrets.DEV_AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
         aws-region: ${{ vars.AWS_REGION }}
         role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
 
@@ -175,7 +174,7 @@ jobs:
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v1
       with:
-        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
+        role-to-assume: arn:aws:iam::${{ secrets.PROD_AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
         aws-region: ${{ vars.AWS_REGION }}
         role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
     
@@ -242,7 +241,6 @@ jobs:
     name: Plan Prod Infrastructure
     needs: [check-prod-code, security-scan-prod, setup]  # Wait for both prod checks to complete
     runs-on: ubuntu-latest
-    environment: prod
     if: github.ref == 'refs/heads/main'
     steps:
     - name: Checkout
