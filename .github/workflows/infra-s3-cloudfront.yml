@@ -11,7 +11,7 @@ on:
       deploy_module:
         description: 'Deploy Module'
         required: false
-        default: 'vpc'
+        default: 's3-cloudfront'
         type: choice
         options:
           - vpc
@@ -64,7 +64,7 @@ jobs:
           deploy_module: ${{ inputs.deploy_module }}
           branch: ${{ inputs.branch }}
         run: |
-          echo "${inputs.deploy_module:-vpc}" >> $GITHUB_OUTPUT
+          echo "${inputs.deploy_module:-s3-cloudfront}" >> $GITHUB_OUTPUT
           echo "${inputs.branch:-dev}" >> $GITHUB_OUTPUT
 
   # Terragrunt HCL Format Checks for DEV Environment
