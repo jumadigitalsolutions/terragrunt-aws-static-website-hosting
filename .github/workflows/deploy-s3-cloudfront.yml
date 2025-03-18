@@ -1,0 +1,84 @@
+name: Deploy to S3 + CloudFront
+
+on:
+  workflow_dispatch: # Allows manually triggering the workflow
+  push: # Triggers the workflow on a push to the main branch  
+    branches: [ main, dev ]
+    paths: # Trigger when application code changes
+      - 'src/**'
+      - '.github/workflows/deploy-s3-cloudfront.yml'
+
+# Security context for AWS authentication
+permissions:
+  id-token: write  # Required for OIDC token exchange to assume AWS role
+  contents: read   # Repository access
+
+jobs:
+  deploy-dev:
+    name: Deploy to Dev
+    runs-on: ubuntu-latest
+    environment: dev  # Leverage GitHub environment to deploy to dev environment, and manage environment specific variables, enabling manual approval for prod deployment
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set environment name
+        id: env_name
+        run: echo "environment=dev" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
+
+      # Upload to S3 bucket
+      - name: Deploy to S3
+        run: |
+          aws s3 cp src/index.html s3://hippo-website-dev/index.html
+          
+      # Since we're updating an existing file (index.html) without changing its name,
+      # we need to invalidate CloudFront's cache to ensure visitors see the new content.
+      - name: Invalidate CloudFront
+        run: |
+          DISTRIBUTION_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Origins.Items[?contains(DomainName, 'hippo-website-dev')]].Id" --output text)
+          
+          if [ ! -z "$DISTRIBUTION_ID" ]; then
+            aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/index.html"
+          fi
+
+  # Production deployment follows the same pattern as the dev deployment
+  deploy-prod:
+    name: Deploy to Production
+    needs: deploy-dev  # Require dev deployment to succeed
+    runs-on: ubuntu-latest
+    environment: prod
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set environment name
+        id: env_name
+        run: echo "environment=prod" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: GitHubActions-${{ steps.env_name.outputs.environment }}
+
+      - name: Deploy to S3
+        run: |
+          aws s3 cp src/index.html s3://hippo-website-prod/index.html
+          
+      - name: Invalidate CloudFront
+        run: |
+          DISTRIBUTION_ID=$(aws cloudfront list-distributions --query "DistributionList.Items[?Origins.Items[?contains(DomainName, 'hippo-website-prod')]].Id" --output text)
+          
+          if [ ! -z "$DISTRIBUTION_ID" ]; then
+            aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths "/*"
+          fi

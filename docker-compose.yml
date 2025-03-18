@@ -1,0 +1,11 @@
+# Local development setup - not used in production
+version: '3'
+
+services:
+  hippo-website:
+    build: .
+    ports:
+      - "80:80"  # Map host port to container
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html  # Live reload for development
+    restart: always  # Auto-recover from crashes 

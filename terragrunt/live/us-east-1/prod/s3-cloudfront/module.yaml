@@ -1,0 +1,2 @@
+# S3 + CloudFront specific configuration for prod
+bucket_name: "hippo-website-prod"

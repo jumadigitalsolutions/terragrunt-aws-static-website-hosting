@@ -5,7 +5,7 @@
 # Define locals for the environment variables
 locals {
   # Parse the path to get the environment and region
-  path = split("/", path_relative_to_include())
+  path   = split("/", path_relative_to_include())
   region = local.path[1]
   env    = local.path[2]
   module = local.path[3]
@@ -13,13 +13,13 @@ locals {
   # Create merged environment variables from common and module configs
   vars = merge(
     yamldecode(
-      fileexists("${get_terragrunt_dir()}/../common.yaml") 
-      ? file("${get_terragrunt_dir()}/../common.yaml") 
+      fileexists("${get_terragrunt_dir()}/../common.yaml")
+      ? file("${get_terragrunt_dir()}/../common.yaml")
       : "{}"
     ),
     yamldecode(
-      fileexists("${get_terragrunt_dir()}/module.yaml") 
-      ? file("${get_terragrunt_dir()}/module.yaml") 
+      fileexists("${get_terragrunt_dir()}/module.yaml")
+      ? file("${get_terragrunt_dir()}/module.yaml")
       : "{}"
     )
   )
@@ -39,11 +39,22 @@ remote_state {
     if_exists = "overwrite_terragrunt" # Generates a new backend.tf file if it doesn't exist
   }
   config = {
-    bucket         = "jumads-hippo-terraform-state"
-    key            = "replace(${path_relative_to_include()}, 'live/', '')/terraform.tfstate" # Remove "live" from the path and join remaining parts for the state file path in S3
-    region         = local.region
-    encrypt        = true
+    bucket       = "jumads-hippo-terraform-state"
+    key          = "replace(${path_relative_to_include()}, 'live/', '')/terraform.tfstate" # Remove "live" from the path and join remaining parts for the state file path in S3
+    region       = local.region
+    encrypt      = true
     use_lockfile = true
+
+    # We do not need to assume a role for the static website hosting because in GitHub Actions,
+    # we are using an action to assume the IAM role for the static website hosting.
+    # assume_role = {
+    #   role_arn     = "arn:aws:iam::626146856453:role/github-execution-role-terragrunt-aws-static-website-hosting"
+    #   session_name = "GitHubActionsSession-${local.env}"
+
+    #   tags = merge(local.vars.tags, {
+    #     "github_actions_session" = "true"
+    #   })
+    # }
   }
 }
 
@@ -55,18 +66,20 @@ generate "provider" {
 provider "aws" {
   region = "${local.region}"
   
-  # Allows GitHub Actions to assume the role for the static website hosting with OIDC
-  assume_role {
-    role_arn = "arn:aws:iam::626146856453:role/github-execution-role-terragrunt-aws-static-website-hosting"
-  }
+  # We do not need to assume a role for the static website hosting because in GitHub Actions,
+  # we are using an action to assume the IAM role for the static website hosting.
+  # assume_role {
+  #   role_arn     = "arn:aws:iam::626146856453:role/github-execution-role-terragrunt-aws-static-website-hosting"
+  #   session_name = "GitHubActionsSession-${local.env}"
+  # }
 }
 EOF
 }
 
 generate "terraform" {
-  path = "terraform.tf"
+  path      = "terraform.tf"
   if_exists = "overwrite_terragrunt"
-  contents = <<EOF
+  contents  = <<EOF
   terraform {
     required_version = "= 1.11.2"
   }
