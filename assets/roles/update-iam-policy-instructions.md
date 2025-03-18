@@ -76,9 +76,9 @@ Follow these steps to update the permissions for your GitHub Actions role to fix
                 "route53:ChangeResourceRecordSets",
                 "route53:ListResourceRecordSets",
                 "route53:GetChange",
-                "route53:TagResource",
-                "route53:UntagResource",
-                "route53:ListTagsForResource"
+                "route53:ListTagsForResource",
+                "route53:ListTagsForResources",
+                "route53:ChangeTagsForResource"
             ],
             "Resource": [
                 "*"
@@ -184,5 +184,6 @@ This policy update adds essential permissions that were missing:
   - `cloudfront:DeleteOriginAccessControl` - To remove OAC
 
 - **Route53 Permissions**:
-  - `route53:ListTagsForResource` - To view tags for Route53 resources
-  - `route53:TagResource`/`route53:UntagResource` - To manage tags 
+  - `route53:ListTagsForResource` - To view tags for a specific resource
+  - `route53:ListTagsForResources` - To view tags for multiple resources
+  - `route53:ChangeTagsForResource` - To add/remove tags for Route53 resources 
