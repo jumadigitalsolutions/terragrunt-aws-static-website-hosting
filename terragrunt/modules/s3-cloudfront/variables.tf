@@ -13,9 +13,21 @@ variable "tags" {
   type        = map(string)
 }
 
-variable "domain" {
+variable "create_route53_hosted_zone" {
+  description = "Whether to create a new Route53 hosted zone"
+  type        = bool
+  default     = false
+}
+
+
+variable "domain_name" {
   description = "Domain name"
   type        = string
+  default     = ""
+  validation {
+    condition     = regex("^[a-z].com", var.domain_name)
+    error_message = "Domain name must be in the format of example.com"
+  }
 }
 
 variable "acm_certificate_domain" {
@@ -23,3 +35,10 @@ variable "acm_certificate_domain" {
   type        = string
   default     = ""
 }
+
+variable "acm_certificate_arn" {
+  description = "ARN of the ACM certificate"
+  type        = string
+  default     = ""
+}
+

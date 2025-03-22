@@ -20,7 +20,7 @@ output "cloudfront_distribution_domain_name" {
 
 output "cloudfront_custom_domain" {
   description = "Custom domain for the CloudFront distribution"
-  value       = format("hippo-cloudfront-%s.%s", var.environment, var.domain)
+  value       = format("hippo-cloudfront-%s.%s", var.environment, var.domain_name)
 }
 
 output "route53_zone_id" {

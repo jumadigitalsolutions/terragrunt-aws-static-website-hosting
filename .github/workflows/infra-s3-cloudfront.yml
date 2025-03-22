@@ -14,17 +14,15 @@ on:
           - ecs-fargate
 
   push: # Triggers the workflow on a push to the main branch  
-    branches: [ main, dev ]
+    branches: [ main ]
     paths: # Only triggers the pipeline upon S3-CloudFront code changes
-      - 'terragrunt/modules/s3-cloudfront/**'
-      - 'terragrunt/live/**/s3-cloudfront/**'
-      - '.github/workflows/infra-s3-cloudfront.yml'
+      - 'terragrunt/**'
+      - '.github/workflows/infra-*.yml'
   pull_request: # Same as push triggers, but for PR validation
-    branches: [ main, dev ]
+    branches: [ main ]
     paths:  # Only triggers the pipeline upon S3-CloudFront code changes
-      - 'terragrunt/modules/s3-cloudfront/**'
-      - 'terragrunt/live/**/s3-cloudfront/**'
-      - '.github/workflows/infra-s3-cloudfront.yml'
+      - 'terragrunt/**'
+      - '.github/workflows/infra-*.yml'
 
 # Security context for AWS authentication
 permissions:
@@ -50,6 +48,13 @@ jobs:
     outputs:
       deploy_module: ${{ steps.set_variables.outputs.deploy_module }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history to ensure all files are included, so we can use git diff to check for changes
+      - name: Check Changes
+        run: |
+          git diff --name-only origin/main...HEAD
       - id: set_variables
         name: Set Default Variables
         env:
@@ -63,8 +68,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [setup]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
 
       - name: Set environment name
         id: env_name

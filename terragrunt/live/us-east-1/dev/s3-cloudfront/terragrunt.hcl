@@ -13,3 +13,5 @@ include {
   path           = "${get_repo_root()}/terragrunt/common/${basename(get_terragrunt_dir())}.hcl"
   merge_strategy = "deep" # Override attributes from the parent terragrunt.hcl file with the common module configuration
 }
+
+# test

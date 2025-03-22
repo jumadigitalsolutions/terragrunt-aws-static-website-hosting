@@ -1,4 +1,7 @@
-# TODO: Disable public read access to the bucket
+locals {
+  public_hosted_zone_id = var.create_route53_hosted_zone ? aws_route53_zone.public_hosted_zone[0].zone_id : data.aws_route53_zone.public_hosted_zone[0].zone_id
+  dns_record_name       = format("hippo-cloudfront-%s.%s", var.environment, var.domain_name)
+}
 
 # S3 Bucket Configuration
 resource "aws_s3_bucket" "website" {
@@ -58,30 +61,14 @@ resource "aws_s3_bucket_policy" "website" {
   })
 }
 
-# Use an existing Route53 hosted zone
-data "aws_route53_zone" "selected" {
-  name = var.domain
-}
-
-# Create DNS record for bucket name subdomain
-resource "aws_route53_record" "bucket_subdomain" {
-  zone_id = data.aws_route53_zone.selected.zone_id
-  name    = "${aws_s3_bucket.website.bucket}.${var.domain}"
-  type    = "A"
-
-  alias {
-    name                   = aws_cloudfront_distribution.website.domain_name
-    zone_id                = aws_cloudfront_distribution.website.hosted_zone_id
-    evaluate_target_health = false
-  }
-}
-
 # Create ACM certificate for the CloudFront distribution
-# Note: CloudFront distributions use certificates in us-east-1 region
 resource "aws_acm_certificate" "cloudfront" {
-  domain_name               = coalesce(var.acm_certificate_domain, "*.${var.domain}")
-  subject_alternative_names = ["${aws_s3_bucket.website.bucket}.${var.domain}"]
-  validation_method         = "DNS"
+  domain_name = coalesce(var.acm_certificate_domain, "*.${var.domain_name}")
+  subject_alternative_names = [
+    "${aws_s3_bucket.website.bucket}.${var.domain_name}",
+    local.dns_record_name
+  ]
+  validation_method = "DNS"
 
   tags = var.tags
 
@@ -100,7 +87,7 @@ resource "aws_route53_record" "cert_validation" {
     }
   }
 
-  zone_id = data.aws_route53_zone.selected.zone_id
+  zone_id = local.public_hosted_zone_id
   name    = each.value.name
   type    = each.value.type
   records = [each.value.record]
@@ -123,8 +110,8 @@ resource "aws_cloudfront_distribution" "website" {
 
   # Custom domain configuration
   aliases = [
-    format("hippo-cloudfront-%s.%s", var.environment, var.domain),
-    "${aws_s3_bucket.website.bucket}.${var.domain}"
+    format("hippo-cloudfront-%s.%s", var.environment, var.domain_name),
+    "${aws_s3_bucket.website.bucket}.${var.domain_name}"
   ]
 
   enabled             = true
@@ -163,26 +150,40 @@ resource "aws_cloudfront_distribution" "website" {
 
   # Certificate configuration
   viewer_certificate {
-    acm_certificate_arn      = aws_acm_certificate_validation.cloudfront.certificate_arn
+    acm_certificate_arn      = aws_acm_certificate_validation.cloudfront.certificate_arn # Ensure the ACM certificate is validated before creating the distribution
     ssl_support_method       = "sni-only"
     minimum_protocol_version = "TLSv1.2_2021"
   }
 
   tags = var.tags
 
-  # Wait for certificate validation before creating the distribution
-  depends_on = [aws_acm_certificate_validation.cloudfront]
 }
 
-# Create Route53 alias record pointing to the CloudFront distribution
-resource "aws_route53_record" "cloudfront" {
-  zone_id = data.aws_route53_zone.selected.zone_id
-  name    = format("hippo-cloudfront-%s.%s", var.environment, var.domain)
+# Use an existing Route53 hosted zone, if var.create_route53_hosted_zone is false
+data "aws_route53_zone" "public_hosted_zone" {
+  count = var.create_route53_hosted_zone ? 0 : 1
+
+  name = var.domain_name
+}
+
+# or create a new one, if var.create_route53_hosted_zone is true
+resource "aws_route53_zone" "public_hosted_zone" {
+  count = var.create_route53_hosted_zone ? 1 : 0
+
+  name = var.domain_name
+}
+
+# Create DNS record for cloudfront subdomain
+resource "aws_route53_record" "cloudfront_subdomain" {
+  count = var.domain_name != "" ? 1 : 0 # Only create the record if the domain name is set
+
+  zone_id = local.public_hosted_zone_id
+  name    = local.dns_record_name
   type    = "A"
 
   alias {
     name                   = aws_cloudfront_distribution.website.domain_name
-    zone_id                = aws_cloudfront_distribution.website.hosted_zone_id
+    zone_id                = aws_cloudfront_distribution.website.public_hosted_zone_id
     evaluate_target_health = false
   }
 }
