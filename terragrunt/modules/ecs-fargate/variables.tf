@@ -23,10 +23,33 @@ variable "domain_name" {
   }
 }
 
+variable "route53_zone_id" {
+  description = "ID of the Route53 hosted zone to use for DNS records"
+  type        = string
+}
+
 variable "acm_certificate_domain" {
   description = "Domain for the ACM certificate (defaults to *.domain)"
   type        = string
   default     = ""
+}
+
+variable "enable_dnssec" {
+  description = "Whether to enable DNSSEC for the Route53 hosted zone"
+  type        = bool
+  default     = false
+}
+
+variable "enable_query_logging" {
+  description = "Whether to enable query logging for the Route53 hosted zone"
+  type        = bool
+  default     = false
+}
+
+variable "query_log_retention_days" {
+  description = "Number of days to retain Route53 query logs"
+  type        = number
+  default     = 7
 }
 
 variable "task_cpu" {

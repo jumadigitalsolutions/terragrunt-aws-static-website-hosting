@@ -259,7 +259,7 @@ resource "aws_lb_listener" "https" {
 
 # Create Route53 DNS record pointing to the ALB
 resource "aws_route53_record" "ecs" {
-  zone_id = data.aws_route53_zone.jumads.zone_id
+  zone_id = var.route53_zone_id
   name    = "hippo-website-ecs-${var.environment}.${var.domain_name}"
   type    = "A"
 
@@ -268,12 +268,6 @@ resource "aws_route53_record" "ecs" {
     zone_id                = aws_lb.main.zone_id
     evaluate_target_health = false
   }
-}
-
-# Setup DNS for the ECS service
-# Use an existing Route53 hosted zone instead of creating a new one
-data "aws_route53_zone" "jumads" {
-  name = var.domain_name
 }
 
 # Create ACM certificate for the ECS service
@@ -299,7 +293,7 @@ resource "aws_route53_record" "cert_validation" {
     }
   }
 
-  zone_id = data.aws_route53_zone.jumads.zone_id
+  zone_id = var.route53_zone_id
   name    = each.value.name
   type    = each.value.type
   records = [each.value.record]
