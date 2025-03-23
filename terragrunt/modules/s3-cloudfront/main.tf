@@ -183,7 +183,7 @@ resource "aws_route53_record" "cloudfront_subdomain" {
 
   alias {
     name                   = aws_cloudfront_distribution.website.domain_name
-    zone_id                = aws_cloudfront_distribution.website.public_hosted_zone_id
+    zone_id                = aws_cloudfront_distribution.website.hosted_zone_id
     evaluate_target_health = false
   }
 }

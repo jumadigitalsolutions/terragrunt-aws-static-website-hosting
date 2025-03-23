@@ -25,17 +25,17 @@ output "cloudfront_custom_domain" {
 
 output "route53_zone_id" {
   description = "ID of the Route53 hosted zone"
-  value       = data.aws_route53_zone.selected.zone_id
+  value       = local.public_hosted_zone_id
 }
 
 output "route53_zone_name" {
   description = "Name of the Route53 hosted zone"
-  value       = data.aws_route53_zone.selected.name
+  value       = var.domain_name
 }
 
 output "nameservers" {
   description = "The nameservers for the Route53 zone"
-  value       = data.aws_route53_zone.selected.name_servers
+  value       = var.create_route53_hosted_zone ? aws_route53_zone.public_hosted_zone[0].name_servers : data.aws_route53_zone.public_hosted_zone[0].name_servers
 }
 
 output "certificate_validation_records" {

@@ -14,6 +14,11 @@ variable "domain" {
   type        = string
 }
 
+variable "domain_name" {
+  description = "Root domain name for Route53 zone"
+  type        = string
+}
+
 variable "acm_certificate_domain" {
   description = "Domain for the ACM certificate (defaults to *.domain)"
   type        = string

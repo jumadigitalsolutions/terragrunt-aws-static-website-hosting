@@ -52,6 +52,7 @@ inputs = {
   
   # Domain configuration
   domain                 = local.vars.domain
+  domain_name            = local.vars.domain_name
   acm_certificate_domain = try(local.vars.acm_certificate_domain, "")
   
   # Other optional inputs

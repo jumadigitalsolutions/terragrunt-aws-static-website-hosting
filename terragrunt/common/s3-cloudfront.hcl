@@ -23,10 +23,11 @@ locals {
 
 # Inputs for the variables defined for the module
 inputs = {
-  domain                  = local.vars.domain
+  domain_name             = local.vars.domain_name
   environment             = local.env
   bucket_name             = local.vars.bucket_name
   acm_certificate_domain  = try(local.vars.acm_certificate_domain, "")
+  create_route53_hosted_zone = false # Use an existing hosted zone
   tags = merge(
     local.vars.tags,
     try(local.vars.bucket_tags, {})

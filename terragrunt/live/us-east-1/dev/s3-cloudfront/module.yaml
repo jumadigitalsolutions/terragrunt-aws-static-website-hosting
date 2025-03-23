@@ -11,6 +11,7 @@ cors_allowed_methods:
   - "HEAD"
 cors_max_age_seconds: 3600 
 domain: "jumads.com"
+domain_name: "jumads.com"
 # DNS and certificate configuration
 acm_certificate_domain: ""  # Leave empty to use *.jumads.com as default
 bucket_tags:

@@ -123,6 +123,7 @@ jobs:
     name: Apply Dev Infrastructure
     needs: [plan-dev]
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     environment: dev
     steps:
     - name: Checkout
@@ -182,20 +183,10 @@ jobs:
         path: terragrunt/live/${{ vars.AWS_REGION }}/prod/**/tfplan
         retention-days: 1
 
-  # Manual approval before applying PROD changes
-  approve-prod:
-    name: Approve Prod Apply
-    needs: [plan-prod]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    steps:
-      - name: Approval notification
-        run: echo "Deployment to production environment was approved"
-
   # Apply PROD infrastructure changes
   apply-prod:
     name: Apply Prod Infrastructure
-    needs: [approve-prod]
+    needs: [plan-prod]
     runs-on: ubuntu-latest
     environment: prod
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
