@@ -1,0 +1,225 @@
+name: Infrastructure - S3 CloudFront
+
+on:
+  workflow_dispatch: # Allows manually triggering the workflow
+    inputs: # Declare inputs for the workflow
+      deploy_module:
+        description: 'Deploy Module'
+        required: false
+        default: 's3-cloudfront'
+        type: choice
+        options:
+          - vpc
+          - s3-cloudfront
+          - ecs-fargate
+
+  push: # Triggers the workflow on a push to the main branch  
+    branches: [ main ]
+    paths: # Only triggers the pipeline upon infrastructure code changes
+      - 'terragrunt/**'
+      - '.github/workflows/infra-*.yml'
+  pull_request: # Same as push triggers, but for PR validation
+    branches: [ main ]
+    paths:  # Only triggers the pipeline upon infrastructure code changes
+      - 'terragrunt/**'
+      - '.github/workflows/infra-*.yml'
+
+# Security context for AWS authentication
+permissions:
+  security-events: write    # Required for uploading SARIF results
+  pull-requests: read       # Required for PR comments
+  contents: write           # Required for checkout
+  id-token: write           # Required for OIDC AWS auth
+  statuses: write           # Required for commit statuses
+  actions: read             # Required for workflow runs
+  pages: write              # For documentation if needed
+  checks: write             # Required for detailed SARIF results
+
+env:
+  tf_version: 1.11.2 # Terraform version
+  tg_version: 0.75.10 # Terragrunt version     
+
+jobs:
+  # Format, validate and run security scans for all modules
+  check-code:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Setup Terraform
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.tf_version }}
+
+      # Format Terraform files into canonical HCL format
+      - name: Format Terraform Files
+        run: |
+          terraform fmt -recursive -diff terragrunt/modules/
+
+      # Format Terragrunt files into canonical HCL format
+      - name: Format Terragrunt Files
+        uses: gruntwork-io/terragrunt-action@v2
+        with:
+          tf_version: ${{ env.tf_version }}
+          tg_version: ${{ env.tg_version }}
+          tg_command: 'hclfmt --non-interactive --diff'
+          tg_dir: terragrunt/live/
+      
+      # Validate Terraform files
+      - name: Validate Terraform Files
+        run: |
+          terraform validate terragrunt/modules/
+          
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: terragrunt/modules/
+          quiet: true
+          output_format: cli,sarif
+          output_file_path: console,checkov-results.sarif
+          soft_fail: true
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: checkov-results.sarif
+          wait-for-processing: true
+
+  # Plan DEV infrastructure changes
+  plan-dev:
+    name: Plan Dev Infrastructure
+    runs-on: ubuntu-latest
+    needs: [ check-code ]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.DEV_AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
+        aws-region: ${{ vars.AWS_REGION }}
+        role-session-name: GitHubActionsDev
+
+    - name: Terragrunt Plan
+      uses: gruntwork-io/terragrunt-action@v2
+      with:
+        tf_version: ${{ env.tf_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/dev/
+        tg_comment: true # Comment on the PR with the Terragrunt plan output
+        tg_command: 'run-all plan -out=tfplan --terragrunt-non-interactive'
+    
+    - name: Upload Terraform Plan
+      uses: actions/upload-artifact@v4
+      with:
+        name: dev-tfplan
+        path: terragrunt/live/${{ vars.AWS_REGION }}/dev/tfplan
+        retention-days: 1
+
+  # Apply DEV infrastructure changes
+  apply-dev:
+    name: Apply Dev Infrastructure
+    needs: [plan-dev]
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.DEV_AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
+        aws-region: ${{ vars.AWS_REGION }}
+        role-session-name: GitHubActionsDev
+    
+    - name: Download Terraform Plan
+      uses: actions/download-artifact@v4
+      with:
+        name: dev-tfplan
+        path: terragrunt/live/${{ vars.AWS_REGION }}/dev/
+
+    - name: Terragrunt Apply
+      uses: gruntwork-io/terragrunt-action@v2
+      with:
+        tf_version: ${{ env.tf_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/dev/
+        tg_command: 'run-all apply tfplan --terragrunt-non-interactive'
+
+  # Plan PROD infrastructure changes
+  plan-prod:
+    name: Plan Prod Infrastructure
+    needs: [ apply-dev ]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.PROD_AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
+        aws-region: ${{ vars.AWS_REGION }}
+        role-session-name: GitHubActionsProd
+
+    - name: Terragrunt Plan
+      uses: gruntwork-io/terragrunt-action@v2
+      with:
+        tf_version: ${{ env.tf_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/prod/
+        tg_comment: true
+        tg_command: 'run-all plan -out=tfplan --terragrunt-non-interactive'
+    
+    - name: Upload Terraform Plan
+      uses: actions/upload-artifact@v4
+      with:
+        name: prod-tfplan
+        path: terragrunt/live/${{ vars.AWS_REGION }}/prod/**/tfplan
+        retention-days: 1
+
+  # Manual approval before applying PROD changes
+  approve-prod:
+    name: Approve Prod Apply
+    needs: [plan-prod]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    steps:
+      - name: Approval notification
+        run: echo "Deployment to production environment was approved"
+
+  # Apply PROD infrastructure changes
+  apply-prod:
+    name: Apply Prod Infrastructure
+    needs: [approve-prod]
+    runs-on: ubuntu-latest
+    environment: prod
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v1
+      with:
+        role-to-assume: arn:aws:iam::${{ secrets.PROD_AWS_ACCOUNT_ID }}:role/github-execution-role-terragrunt-aws-static-website-hosting
+        aws-region: ${{ vars.AWS_REGION }}
+        role-session-name: GitHubActionsProd
+    
+    - name: Download Terraform Plan
+      uses: actions/download-artifact@v4
+      with:
+        name: prod-tfplan
+        path: terragrunt/live/${{ vars.AWS_REGION }}/prod/
+
+    - name: Terragrunt Apply
+      uses: gruntwork-io/terragrunt-action@v2
+      with:
+        tf_version: ${{ env.tf_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/prod/
+        tg_command: 'run-all apply tfplan --terragrunt-non-interactive'

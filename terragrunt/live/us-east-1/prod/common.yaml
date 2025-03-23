@@ -1,15 +1,6 @@
 # Common configuration for prod environment
-account_id: "123456789012"
-vpc_id: "vpc-prod-67890"
-private_subnet_ids:
-  - "subnet-prod-1"
-  - "subnet-prod-2"
-ecs_security_group_id: "sg-prod-67890"
-domain: "example.com"
 tags:
-  Environment: "prod"
-  Project: "hippo"
-certificate_arn: arn:aws:acm:us-east-1:123456789012:certificate/prod-cert
-cluster_name: hippo-cluster-prod
-service_name: hippo-service-prod
-bucket_name: hippo-website-prod-us-east-1 
+  Environment: "Prod"
+  Project: "Hippo"
+  Owner: "Juma"
+  CostCenter: "ProdOps"

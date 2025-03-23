@@ -1,2 +1,18 @@
 # S3 + CloudFront specific configuration for prod
-bucket_name: "hippo-website-prod"
+bucket_name: "hippo-website"
+cloudfront_price_class: "PriceClass_100"
+error_document: "error.html"
+index_document: "index.html"
+cors_allowed_headers:
+  - "Authorization"
+  - "Content-Length"
+cors_allowed_methods:
+  - "GET"
+  - "HEAD"
+cors_max_age_seconds: 3600 
+domain: "jumads.com"
+# DNS and certificate configuration
+acm_certificate_domain: ""  # Leave empty to use *.jumads.com as default
+bucket_tags:
+  Purpose: "static-website"
+  Tier: "public"

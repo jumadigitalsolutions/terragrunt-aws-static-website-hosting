@@ -1,7 +1,7 @@
 # Creates an ECR repository for the hippo website
 resource "aws_ecr_repository" "hippo" {
   name                 = "hippo-website-${var.environment}"
-  image_tag_mutability = "MUTABLE"
+  image_tag_mutability = "IMMUTABLE"
 
   image_scanning_configuration {
     scan_on_push = true
