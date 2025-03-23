@@ -102,3 +102,26 @@ variable "cors_max_age_seconds" {
   default     = 3600
 }
 
+variable "enable_versioning" {
+  description = "Whether to enable versioning for the S3 bucket"
+  type        = bool
+  default     = true
+}
+
+variable "enable_logging" {
+  description = "Whether to enable logging for the S3 bucket"
+  type        = bool
+  default     = true
+}
+
+variable "s3_bucket_private" {
+  description = "Whether to make the S3 bucket private"
+  type        = bool
+  default     = true
+}
+
+variable "enable_lifecycle_configuration" {
+  description = "Whether to enable lifecycle configuration for the S3 bucket"
+  type        = bool
+  default     = true
+}

@@ -9,6 +9,117 @@ resource "aws_s3_bucket" "cloudfront" {
   tags = var.tags
 }
 
+# KMS Key Configuration for bucket encryption
+resource "aws_kms_key" "bucket_encryption" {
+  description             = "This key is used to encrypt bucket objects"
+  deletion_window_in_days = 10
+}
+
+# Enable server-side encryption for the bucket
+resource "aws_s3_bucket_server_side_encryption_configuration" "cloudfront" {
+  bucket = aws_s3_bucket.cloudfront.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      kms_master_key_id = aws_kms_key.bucket_encryption.arn
+      sse_algorithm     = "aws:kms"
+    }
+  }
+}
+
+# SNS Topic Policy for bucket notifications
+data "aws_iam_policy_document" "topic" {
+  statement {
+    effect = "Allow"
+
+    principals {
+      type        = "Service"
+      identifiers = ["s3.amazonaws.com"]
+    }
+
+    actions   = ["SNS:Publish"]
+    resources = ["arn:aws:sns:*:*:s3-event-notification-topic"]
+
+    condition {
+      test     = "ArnLike"
+      variable = "aws:SourceArn"
+      values   = [aws_s3_bucket.bucket.arn]
+    }
+  }
+}
+
+# Create SNS Topic for bucket notifications
+resource "aws_sns_topic" "bucket_notification_topic" {
+  name   = "s3-event-notification-topic"
+  policy = data.aws_iam_policy_document.topic.json
+}
+
+# S3 Bucket Notification Configuration
+resource "aws_s3_bucket_notification" "bucket_notification" {
+  bucket = aws_s3_bucket.cloudfront.id
+
+  topic {
+    topic_arn = aws_sns_topic.bucket_notification_topic.arn
+    events = [
+      "s3:ObjectCreated:*",
+      "s3:ObjectUpdated:*",
+      "s3:ObjectVersionUpdated:*"
+    ]
+  }
+}
+
+# Ensure bucket ACL is private
+resource "aws_s3_bucket_acl" "this" {
+  count = var.s3_bucket_private ? 1 : 0
+
+  bucket = aws_s3_bucket.cloudfront.id
+  acl    = "private"
+}
+
+# Enable versioning for the bucket
+resource "aws_s3_bucket_versioning" "this" {
+  count = var.enable_versioning ? 1 : 0
+
+  bucket = aws_s3_bucket.cloudfront.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+# Create bucket for logging
+resource "aws_s3_bucket" "logging" {
+  count  = var.enable_logging ? 1 : 0
+  bucket = format("%s-logging-%s", var.bucket_name, var.environment)
+}
+
+# Enable logging for the bucket
+resource "aws_s3_bucket_logging" "this" {
+  count = var.enable_logging ? 1 : 0
+
+  bucket        = aws_s3_bucket.cloudfront.id
+  target_bucket = aws_s3_bucket.logging[0].id
+  target_prefix = "logs/"
+}
+
+# Enable lifecycle configuration for the bucket
+resource "aws_s3_bucket_lifecycle_configuration" "this" {
+  count = var.enable_lifecycle_configuration ? 1 : 0
+
+  bucket = aws_s3_bucket.cloudfront.id
+
+  rule {
+    id     = "delete-after-30-days"
+    status = "Enabled"
+    filter {
+      prefix = "logs/"
+    }
+    expiration {
+      days = 30
+    }
+  }
+}
+
+# Ensure bucket ownership is enforced
 resource "aws_s3_bucket_ownership_controls" "cloudfront" {
   bucket = aws_s3_bucket.cloudfront.id
   rule {
@@ -18,6 +129,8 @@ resource "aws_s3_bucket_ownership_controls" "cloudfront" {
 
 # Security Hardening - Block all public access
 resource "aws_s3_bucket_public_access_block" "cloudfront" {
+  count = var.s3_bucket_private ? 1 : 0
+
   bucket = aws_s3_bucket.cloudfront.id
 
   block_public_acls       = true
