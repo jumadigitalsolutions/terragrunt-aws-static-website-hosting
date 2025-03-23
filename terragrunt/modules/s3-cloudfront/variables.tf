@@ -25,7 +25,7 @@ variable "domain_name" {
   type        = string
   default     = ""
   validation {
-    condition     = regex("^[a-z].com", var.domain_name)
+    condition     = regex("^[a-z]+\\.[a-z]+$", var.domain_name)
     error_message = "Domain name must be in the format of example.com"
   }
 }
