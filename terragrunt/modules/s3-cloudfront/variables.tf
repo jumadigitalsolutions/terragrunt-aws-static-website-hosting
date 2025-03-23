@@ -19,15 +19,10 @@ variable "create_route53_hosted_zone" {
   default     = false
 }
 
-
 variable "domain_name" {
   description = "Domain name"
   type        = string
   default     = ""
-  validation {
-    condition     = regex("^[a-z]+\\.[a-z]+$", var.domain_name)
-    error_message = "Domain name must be in the format of example.com"
-  }
 }
 
 variable "acm_certificate_domain" {

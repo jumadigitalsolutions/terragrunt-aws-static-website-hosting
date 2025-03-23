@@ -17,6 +17,10 @@ variable "domain" {
 variable "domain_name" {
   description = "Root domain name for Route53 zone"
   type        = string
+  validation {
+    condition     = can(regex("^[a-z0-9]+(\\.[a-z0-9]+)+$", var.domain_name))
+    error_message = "Domain name must be in the format of example.com"
+  }
 }
 
 variable "acm_certificate_domain" {
