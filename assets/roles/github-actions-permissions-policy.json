@@ -202,7 +202,8 @@
                 "kms:Encrypt",
                 "kms:Decrypt",
                 "kms:ReEncrypt*",
-                "kms:*Grant*"
+                "kms:*Grant*",
+                "kms:GetKeyRotationStatus"
             ],
             "Resource": "*"
         },

@@ -78,6 +78,10 @@ The following permissions were recently added or expanded:
 - Focused on only the necessary operations for VPC management
 - Maintains all required functionality while being more secure
 
+### KMS
+- Added permissions for key operations (encryption, decryption, grants)
+- Added kms:GetKeyRotationStatus permission for managing DNSSEC key rotation status
+
 ### S3
 - Added comprehensive bucket configuration permissions (ownership controls, encryption, public access block)
 - Added permissions for replication, tagging, and lifecycle management
@@ -99,9 +103,6 @@ The following permissions were recently added or expanded:
 - Added tagging permissions
 - Added permissions for task monitoring
 - Added permissions for image scanning
-
-### KMS
-- Added permissions for key operations (encryption, decryption, grants)
 
 ### CloudWatch Logs
 - Added permissions for log stream management
