@@ -86,7 +86,7 @@ resource "aws_cloudfront_response_headers_policy" "cloudfront_response_headers_p
     access_control_allow_credentials = true
 
     access_control_allow_headers {
-      items = ["*"]
+      items = ["Authorization", "Content-Type", "Origin"]
     }
 
     access_control_allow_methods {

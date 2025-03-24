@@ -137,7 +137,9 @@ resource "aws_s3_bucket_ownership_controls" "cloudfront" {
 ################################################################################
 # S3 CORS Configuration
 ################################################################################
-resource "aws_s3_bucket_cors_configuration" "new_bucket" {
+# This will be overridden by the cloudfront module response headers policy,
+# because the override attribute is set to true
+resource "aws_s3_bucket_cors_configuration" "cors_configuration" {
   for_each = var.s3_cors_rules != null ? local.bucket_names : {}
 
   bucket = aws_s3_bucket.cloudfront[each.key].id
