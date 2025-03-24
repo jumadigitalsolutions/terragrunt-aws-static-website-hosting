@@ -2,14 +2,13 @@
     "Version": "2012-10-17",
     "Statement": [
         {
-            "Sid": "S3BucketPermissions",
+            "Sid": "S3BucketOperations",
             "Effect": "Allow",
             "Action": [
-                "s3:CreateBucket",
-                "s3:DeleteBucket",
-                "s3:Put*",
-                "s3:Get*",
+                "s3:*Bucket*",
                 "s3:List*",
+                "s3:Get*",
+                "s3:Put*",
                 "s3:DeleteObject"
             ],
             "Resource": [
@@ -19,14 +18,10 @@
             ]
         },
         {
-            "Sid": "S3ObjectPermissions",
+            "Sid": "S3ObjectOperations",
             "Effect": "Allow",
             "Action": [
-                "s3:PutObject",
-                "s3:GetObject",
-                "s3:DeleteObject",
-                "s3:PutObjectTagging",
-                "s3:GetObjectTagging"
+                "s3:*Object*"
             ],
             "Resource": [
                 "arn:aws:s3:::hippo-website-*/*",
@@ -35,7 +30,7 @@
             ]
         },
         {
-            "Sid": "S3GlobalActions",
+            "Sid": "S3GlobalOperations",
             "Effect": "Allow",
             "Action": [
                 "s3:ListAllMyBuckets",
@@ -44,92 +39,48 @@
             "Resource": "*"
         },
         {
-            "Sid": "CloudfrontPermissions",
+            "Sid": "CloudfrontOperations",
             "Effect": "Allow",
             "Action": [
-                "cloudfront:*Distribution*",
-                "cloudfront:*Tag*",
-                "cloudfront:*Invalidation*",
-                "cloudfront:*OriginAccessControl*",
-                "cloudfront:*ResponseHeadersPolicy*"
+                "cloudfront:*"
             ],
             "Resource": "*"
         },
         {
-            "Sid": "Route53Permissions",
+            "Sid": "Route53Operations",
             "Effect": "Allow",
             "Action": [
-                "route53:CreateHostedZone",
-                "route53:ListHostedZones",
-                "route53:ChangeResourceRecordSets",
-                "route53:GetHostedZone",
-                "route53:ListResourceRecordSets",
-                "route53:GetChange",
-                "route53:*KeySigningKey*",
-                "route53:*HostedZoneDNSSEC",
-                "route53:GetDNSSEC",
-                "route53:*QueryLoggingConfig*",
-                "route53:ListTagsForResource",
-                "route53:UpdateHostedZoneComment"
+                "route53:*"
             ],
             "Resource": "*"
         },
         {
-            "Sid": "ACMCertificatePermissions",
+            "Sid": "ACMOperations",
             "Effect": "Allow",
             "Action": [
-                "acm:*Certificate*",
-                "acm:*Tags*",
-                "acm:GetCertificate",
-                "acm:ImportCertificate",
-                "acm:RenewCertificate",
-                "acm:ExportCertificate",
-                "acm:ResendValidationEmail"
+                "acm:*"
             ],
             "Resource": "*"
         },
         {
-            "Sid": "ECSPermissions",
+            "Sid": "ContainerServices",
             "Effect": "Allow",
             "Action": [
-                "ecs:*Cluster*",
-                "ecs:*TaskDefinition*",
-                "ecs:*Service*",
-                "ecs:*Tasks*",
-                "ecs:*Tag*"
+                "ecs:*",
+                "ecr:*"
             ],
             "Resource": "*"
         },
         {
-            "Sid": "ECRPermissions",
+            "Sid": "LoadBalancingOperations",
             "Effect": "Allow",
             "Action": [
-                "ecr:*Repository*",
-                "ecr:GetAuthorizationToken",
-                "ecr:*Layer*",
-                "ecr:PutImage",
-                "ecr:BatchGetImage",
-                "ecr:*Tag*",
-                "ecr:*ImageScan*"
+                "elasticloadbalancing:*"
             ],
             "Resource": "*"
         },
         {
-            "Sid": "ElasticLoadBalancingPermissions",
-            "Effect": "Allow",
-            "Action": [
-                "elasticloadbalancing:*LoadBalancer*",
-                "elasticloadbalancing:*Listener*",
-                "elasticloadbalancing:*Rule*",
-                "elasticloadbalancing:*TargetGroup*",
-                "elasticloadbalancing:Describe*",
-                "elasticloadbalancing:*Tags*",
-                "elasticloadbalancing:*Targets*"
-            ],
-            "Resource": "*"
-        },
-        {
-            "Sid": "IAMRoleAndPolicyPermissions",
+            "Sid": "IAMRoleAndPolicyOperations",
             "Effect": "Allow",
             "Action": [
                 "iam:CreateRole",
@@ -156,7 +107,12 @@
                 "iam:DetachRolePolicy",
                 "iam:ListAttachedRolePolicies"
             ],
-            "Resource": "*"
+            "Resource": "*",
+            "Condition": {
+                "StringNotEquals": {
+                    "iam:ResourceTag/Protected": "true"
+                }
+            }
         },
         {
             "Sid": "IAMPassRolePermission",
@@ -186,60 +142,29 @@
             ]
         },
         {
-            "Sid": "KMSPermissions",
+            "Sid": "EncryptionKeyOperations",
             "Effect": "Allow",
             "Action": [
-                "kms:Create*",
-                "kms:Describe*",
-                "kms:Enable*",
-                "kms:Disable*",
-                "kms:Schedule*",
-                "kms:*Alias*",
-                "kms:*Tag*",
-                "kms:*Policy*",
-                "kms:List*",
-                "kms:Generate*",
-                "kms:Encrypt",
-                "kms:Decrypt",
-                "kms:ReEncrypt*",
-                "kms:*Grant*",
-                "kms:GetKeyRotationStatus"
+                "kms:*"
             ],
             "Resource": "*"
         },
         {
-            "Sid": "CloudWatchLogsPermissions",
+            "Sid": "LoggingAndMonitoring",
             "Effect": "Allow",
             "Action": [
-                "logs:Create*",
-                "logs:Delete*",
-                "logs:Put*",
-                "logs:Describe*",
-                "logs:*Tag*",
-                "logs:Get*",
-                "logs:List*"
+                "logs:*",
+                "cloudwatch:*",
+                "sns:*"
             ],
             "Resource": "*"
         },
         {
-            "Sid": "WAFv2Permissions",
+            "Sid": "WAFandFirehose",
             "Effect": "Allow",
             "Action": [
-                "wafv2:*WebACL*",
-                "wafv2:*Tag*",
-                "wafv2:*IPSet*",
-                "wafv2:*RegexPatternSet*",
-                "wafv2:*LoggingConfiguration*"
-            ],
-            "Resource": "*"
-        },
-        {
-            "Sid": "KinesisFirehosePermissions",
-            "Effect": "Allow",
-            "Action": [
-                "firehose:*DeliveryStream*",
-                "firehose:*Tag*",
-                "firehose:*Record*"
+                "wafv2:*",
+                "firehose:*"
             ],
             "Resource": "*"
         },
@@ -247,27 +172,12 @@
             "Sid": "TerraformStateAccess",
             "Effect": "Allow",
             "Action": [
-                "s3:GetObject",
-                "s3:PutObject",
-                "s3:DeleteObject",
-                "s3:ListBucket",
-                "s3:GetBucketVersioning",
-                "s3:PutBucketVersioning",
-                "s3:GetEncryptionConfiguration",
-                "s3:GetBucketPublicAccessBlock",
-                "s3:GetBucketAcl",
-                "s3:GetBucketLocation",
-                "s3:GetBucketTagging",
-                "s3:GetBucketLogging",
-                "s3:GetBucketPolicy"
+                "s3:*"
             ],
-            "Resource": [
-                "arn:aws:s3:::jumads-hippo-terraform-state*",
-                "arn:aws:s3:::jumads-hippo-terraform-state*/*"
-            ]
+            "Resource": "arn:aws:s3:::jumads-hippo-terraform-state*"
         },
         {
-            "Sid": "DynamoDBPermissions",
+            "Sid": "DynamoDBOperations",
             "Effect": "Allow",
             "Action": [
                 "dynamodb:GetItem",
@@ -278,37 +188,17 @@
             "Resource": "arn:aws:dynamodb:*:*:table/terraform-state-lock"
         },
         {
-            "Sid": "EC2Permissions",
+            "Sid": "EC2VPCOperations",
             "Effect": "Allow",
             "Action": [
                 "ec2:Describe*",
-                "ec2:CreateVpc",
-                "ec2:DeleteVpc",
-                "ec2:CreateSubnet",
-                "ec2:DeleteSubnet",
-                "ec2:CreateRouteTable",
-                "ec2:DeleteRouteTable",
-                "ec2:CreateRoute",
-                "ec2:DeleteRoute",
-                "ec2:CreateInternetGateway",
-                "ec2:DeleteInternetGateway",
-                "ec2:CreateNatGateway",
-                "ec2:DeleteNatGateway",
-                "ec2:CreateSecurityGroup",
-                "ec2:DeleteSecurityGroup",
-                "ec2:AuthorizeSecurityGroupIngress",
-                "ec2:AuthorizeSecurityGroupEgress",
-                "ec2:RevokeSecurityGroupIngress",
-                "ec2:RevokeSecurityGroupEgress",
-                "ec2:AllocateAddress",
-                "ec2:ReleaseAddress",
-                "ec2:AssociateRouteTable",
-                "ec2:DisassociateRouteTable",
-                "ec2:AttachInternetGateway",
-                "ec2:DetachInternetGateway",
-                "ec2:ModifyVpcAttribute",
-                "ec2:CreateTags",
-                "ec2:DeleteTags"
+                "ec2:*Vpc*",
+                "ec2:*Subnet*",
+                "ec2:*Route*",
+                "ec2:*Gateway*",
+                "ec2:*SecurityGroup*",
+                "ec2:*Address",
+                "ec2:*Tags"
             ],
             "Resource": "*"
         }

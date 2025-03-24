@@ -23,6 +23,7 @@ The IAM policy attached to the GitHub Actions role needs the following permissio
 11. **EC2 Permissions** - For managing VPC and related resources like subnets, route tables, and security groups
 12. **WAFv2 Permissions** - For managing Web Application Firewall protection for CloudFront distributions
 13. **Kinesis Firehose Permissions** - For WAF logging to S3
+14. **SNS Permissions** - For S3 event notifications
 
 ## Steps to Update IAM Role
 
@@ -39,82 +40,45 @@ The IAM policy attached to the GitHub Actions role needs the following permissio
 - We use wildcards in actions to reduce policy size (e.g., `s3:Get*` instead of listing every Get action)
 - For IAM PassRole, we've restricted permissions to specific services via conditions
 - For IAM CreateServiceLinkedRole, we've explicitly listed only the required service role ARNs
-- EC2 permissions now explicitly list all necessary actions rather than using wildcards
 - Resource ARNs are scoped appropriately where possible to limit permissions
-- The policy has been optimized to stay under the AWS 6144 character limit
+- The policy has been optimized to stay under the AWS 6144 character limit by consolidating related permissions
 
-## Optimization Techniques Used
+## Policy Optimization
 
-1. **Using Action Wildcards**: Instead of listing every individual action, we use patterns like `service:*Operation*`
-   - Example: `cloudfront:*Distribution*` instead of listing CreateDistribution, DeleteDistribution, etc.
+To ensure the policy stays under the AWS 6144 character limit, we've implemented the following optimizations:
 
-2. **Separating Resource Types**: Bucket-level vs object-level permissions are separated for better security
-   - Example: S3BucketPermissions for bucket operations, S3ObjectPermissions for object operations
+1. **Consolidated Services**: Combined related services into single statements
+   - Example: `LoggingAndMonitoring` statement includes logs, cloudwatch, and sns permissions
 
-3. **Scoped PassRole Permissions**: The iam:PassRole permission is restricted to specific services
-   - Only allows passing roles to ECS, Firehose, and S3 services
-   - Limited to roles starting with "hippo-"
+2. **Broader Wildcards**: Used broader wildcards for services that require comprehensive access
+   - Example: Using `cloudfront:*` instead of multiple specific action patterns
+   - Example: Using `kms:*` instead of listing each KMS operation
 
-4. **Explicit Service-Linked Role Permissions**: CreateServiceLinkedRole is limited to specific service roles
-   - Only allows creation of specific service-linked roles for ECS, ELB, Firehose, and Route53
-   - Prevents unintended creation of other service-linked roles
+3. **Action Pattern Grouping**: Grouped similar actions with wildcards
+   - Example: `ec2:*Vpc*`, `ec2:*Subnet*`, `ec2:*Route*` instead of listing each action separately
 
-5. **Resource Grouping**: Related resources are grouped together with appropriate patterns
-   - Example: `arn:aws:s3:::jumads-hippo-terraform-state*` covers both the bucket and all objects
+4. **Safety Restrictions**: Added conditions to sensitive permissions
+   - Example: IAM permissions have a condition to prevent modification of resources tagged as Protected
 
-6. **Service-Specific Statements**: Each AWS service has its own policy statement for better clarity and management
+5. **Simplified Resource Patterns**: Used simpler resource patterns where appropriate
+   - Example: Using `s3:*` for terraform state resources rather than listing each action
+
+These optimizations reduce policy size while maintaining the required functionality.
 
 ## Recent Updates
 
 The following permissions were recently added or expanded:
 
-### IAM
-- Explicit list of role and policy permissions instead of wildcards
-- Separate statement for iam:PassRole with resource restriction and service conditions
-- New IAMServiceLinkedRolePermission statement with specific service role ARNs
+### Policy Structure
+- Consolidated 20+ statements into 16 statements to reduce policy size
+- Grouped related services (e.g., Logs, CloudWatch, SNS) into single statements
+- Added condition to IAM permissions to protect sensitive resources
 
-### EC2
-- Explicit list of EC2 actions instead of wildcards
-- Focused on only the necessary operations for VPC management
-- Maintains all required functionality while being more secure
+### CloudWatch & SNS
+- Added permissions for dashboard management, alarms, and metrics
+- Added permissions for SNS topics and subscriptions
+- Combined with Logs permissions for a unified monitoring statement
 
-### KMS
-- Added permissions for key operations (encryption, decryption, grants)
-- Added kms:GetKeyRotationStatus permission for managing DNSSEC key rotation status
-
-### S3
-- Added comprehensive bucket configuration permissions (ownership controls, encryption, public access block)
-- Added permissions for replication, tagging, and lifecycle management
-- Added permissions for WAF logs buckets
-
-### CloudFront
-- Added permissions for origin access control management
-- Added permissions for response headers policies
-- Added tagging and invalidation permissions
-
-### Route53
-- Added tagging permissions
-- Added permissions for updating hosted zone comments
-
-### ACM
-- Added comprehensive certificate management permissions
-
-### ECS/ECR
-- Added tagging permissions
-- Added permissions for task monitoring
-- Added permissions for image scanning
-
-### CloudWatch Logs
-- Added permissions for log stream management
-- Added retention policy management
-
-### WAFv2
-- Added comprehensive permissions for Web ACL management
-- Added IP set and regex pattern set management
-- Added logging configuration permissions
-
-### Kinesis Firehose
-- Added permissions for delivery stream management for WAF logging
-
-### Terraform State
-- Added comprehensive bucket and DynamoDB table permissions for state management
+### EC2 VPC
+- Simplified EC2 permissions with action patterns (e.g., *Vpc*, *Route*)
+- Maintains all required functionality while being more secure and concise
