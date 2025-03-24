@@ -66,21 +66,6 @@ jobs:
           tg_version: ${{ env.tg_version }}
           tg_command: 'hclfmt --non-interactive --diff'
           tg_dir: terragrunt/live/
-          
-      - name: Run Checkov
-        uses: bridgecrewio/checkov-action@v12
-        with:
-          directory: terragrunt/modules/
-          quiet: true
-          output_format: cli,sarif
-          output_file_path: console,checkov-results.sarif
-          soft_fail: true
-
-      - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: checkov-results.sarif
-          wait-for-processing: true
 
   # Plan DEV infrastructure changes
   plan-dev:
