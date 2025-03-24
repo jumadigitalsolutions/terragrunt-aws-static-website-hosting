@@ -125,3 +125,37 @@ variable "enable_lifecycle_configuration" {
   type        = bool
   default     = true
 }
+
+variable "enable_s3_bucket_server_side_encryption" {
+  description = "Whether to enable server-side encryption for the S3 bucket"
+  type        = bool
+  default     = true
+}
+
+variable "enable_s3_bucket_notifications" {
+  description = "Whether to enable S3 bucket notifications"
+  type        = bool
+  default     = true
+}
+
+variable "enable_cross_region_replication" {
+  description = "Whether to enable cross-region replication for the S3 bucket"
+  type        = bool
+  default     = true
+}
+
+variable "s3_cors_rules" {
+  description = "List of CORS rules for the S3 bucket"
+  type = list(object({
+    allowed_headers = list(string)
+    allowed_methods = list(string)
+    allowed_origins = list(string)
+    max_age_seconds = number
+  }))
+  default = [{
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "PUT"]
+    allowed_origins = ["*"]
+    max_age_seconds = 3000
+  }]
+}

@@ -17,12 +17,12 @@ on:
     branches: [ main ]
     paths: # Only triggers the pipeline upon infrastructure code changes
       - 'terragrunt/**'
-      - '.github/workflows/infra-*.yml'
+      - '.github/workflows/deploy-infra.yml'
   pull_request: # Same as push triggers, but for PR validation
     branches: [ main ]
     paths:  # Only triggers the pipeline upon infrastructure code changes
       - 'terragrunt/**'
-      - '.github/workflows/infra-*.yml'
+      - '.github/workflows/deploy-infra.yml'
 
 # Security context for AWS authentication
 permissions:
@@ -40,8 +40,8 @@ env:
   tg_version: 0.75.10 # Terragrunt version     
 
 jobs:
-  # Format, validate and run security scans for all modules
-  check-code:
+  # Format, validate, run linter and security scans for all modules
+  status-check:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -53,10 +53,11 @@ jobs:
           terraform_version: ${{ env.tf_version }}
 
       # Format Terraform files into canonical HCL format
-      - name: Format Terraform Files
+      - name: Format and Validate Terraform Files
         run: |
           terraform fmt -recursive -diff terragrunt/modules/
-
+          terraform validate terragrunt/modules/
+          
       # Format Terragrunt files into canonical HCL format
       - name: Format Terragrunt Files
         uses: gruntwork-io/terragrunt-action@v2
@@ -65,11 +66,6 @@ jobs:
           tg_version: ${{ env.tg_version }}
           tg_command: 'hclfmt --non-interactive --diff'
           tg_dir: terragrunt/live/
-      
-      # Validate Terraform files
-      - name: Validate Terraform Files
-        run: |
-          terraform validate terragrunt/modules/
           
       - name: Run Checkov
         uses: bridgecrewio/checkov-action@v12
@@ -90,7 +86,7 @@ jobs:
   plan-dev:
     name: Plan Dev Infrastructure
     runs-on: ubuntu-latest
-    needs: [ check-code ]
+    needs: [ status-check ]
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -150,6 +146,14 @@ jobs:
         tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/dev/
         tg_command: 'run-all apply tfplan --terragrunt-non-interactive'
 
+    - name: Generate Terraform Docs about the infrastructure deployed
+      uses: terraform-docs/gh-actions@v1.3.0
+      with:
+        working-dir: .
+        output-file: docs/dev-terraform.md
+        output-method: inject
+        git-push: "true"
+        
   # Plan PROD infrastructure changes
   plan-prod:
     name: Plan Prod Infrastructure
@@ -214,3 +218,11 @@ jobs:
         tg_version: ${{ env.tg_version }}
         tg_dir: terragrunt/live/${{ vars.AWS_REGION }}/prod/
         tg_command: 'run-all apply tfplan --terragrunt-non-interactive'
+
+    - name: Generate Terraform Docs about the infrastructure deployed
+      uses: terraform-docs/gh-actions@v1.3.0
+      with:
+        working-dir: .
+        output-file: docs/prod-terraform.md
+        output-method: inject
+        git-push: "true"

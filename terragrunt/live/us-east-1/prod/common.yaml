@@ -1,6 +1,0 @@
-# Common configuration for prod environment
-tags:
-  Environment: "Prod"
-  Project: "Hippo"
-  Owner: "Juma"
-  CostCenter: "ProdOps"

@@ -17,27 +17,16 @@
                 "s3:GetBucketVersioning",
                 "s3:GetBucketWebsite",
                 "s3:ListBucket",
-                "s3:ListAllMyBuckets",
                 "s3:PutObject",
                 "s3:GetObject",
-                "s3:DeleteObject",
-                "s3:Get*",
-                "s3:List*"
+                "s3:DeleteObject"
             ],
-            "Resource": "*"
-        },
-        {
-            "Sid": "S3DeploymentPermissions",
-            "Effect": "Allow",
-            "Action": [
-                "s3:GetObject",
-                "s3:PutObject",
-                "s3:DeleteObject",
-                "s3:ListBucket",
-                "s3:ListAllMyBuckets",
-                "s3:GetBucketLocation"
-            ],
-            "Resource": "*"
+            "Resource": [
+                "arn:aws:s3:::hippo-website-*",
+                "arn:aws:s3:::hippo-website-*/*",
+                "arn:aws:s3:::route53-query-logs-*",
+                "arn:aws:s3:::route53-query-logs-*/*"
+            ]
         },
         {
             "Sid": "CloudfrontDistributionPermissions",
@@ -50,9 +39,7 @@
                 "cloudfront:ListDistributions",
                 "cloudfront:UpdateDistribution",
                 "cloudfront:TagResource",
-                "cloudfront:CreateInvalidation",
-                "cloudfront:Get*",
-                "cloudfront:List*"
+                "cloudfront:CreateInvalidation"
             ],
             "Resource": "*"
         },
@@ -66,8 +53,13 @@
                 "route53:GetHostedZone",
                 "route53:ListResourceRecordSets",
                 "route53:GetChange",
-                "route53:Get*",
-                "route53:List*"
+                "route53:CreateKeySigningKey",
+                "route53:DeleteKeySigningKey",
+                "route53:EnableHostedZoneDNSSEC",
+                "route53:DisableHostedZoneDNSSEC",
+                "route53:GetDNSSEC",
+                "route53:CreateQueryLoggingConfig",
+                "route53:DeleteQueryLoggingConfig"
             ],
             "Resource": "*"
         },
@@ -79,55 +71,7 @@
                 "acm:DeleteCertificate",
                 "acm:DescribeCertificate",
                 "acm:ListCertificates",
-                "acm:AddTagsToCertificate",
-                "acm:Get*",
-                "acm:List*"
-            ],
-            "Resource": "*"
-        },
-        {
-            "Sid": "SSMParameterPermissions",
-            "Effect": "Allow",
-            "Action": [
-                "ssm:PutParameter",
-                "ssm:GetParameter",
-                "ssm:DeleteParameter",
-                "ssm:Get*",
-                "ssm:List*"
-            ],
-            "Resource": "*"
-        },
-        {
-            "Sid": "VPCPermissions",
-            "Effect": "Allow",
-            "Action": [
-                "ec2:CreateVpc",
-                "ec2:DeleteVpc",
-                "ec2:CreateSubnet",
-                "ec2:DeleteSubnet",
-                "ec2:CreateSecurityGroup",
-                "ec2:DeleteSecurityGroup",
-                "ec2:AuthorizeSecurityGroupIngress",
-                "ec2:AuthorizeSecurityGroupEgress",
-                "ec2:RevokeSecurityGroupEgress",
-                "ec2:CreateRouteTable",
-                "ec2:DeleteRouteTable",
-                "ec2:AssociateRouteTable",
-                "ec2:DisassociateRouteTable",
-                "ec2:CreateRoute",
-                "ec2:DeleteRoute",
-                "ec2:CreateInternetGateway",
-                "ec2:DeleteInternetGateway",
-                "ec2:AttachInternetGateway",
-                "ec2:DetachInternetGateway",
-                "ec2:AllocateAddress",
-                "ec2:ReleaseAddress",
-                "ec2:CreateNatGateway",
-                "ec2:DeleteNatGateway",
-                "ec2:CreateTags",
-                "ec2:Get*",
-                "ec2:List*",
-                "ec2:Describe*"
+                "acm:AddTagsToCertificate"
             ],
             "Resource": "*"
         },
@@ -147,9 +91,7 @@
                 "ecs:DescribeTaskDefinition",
                 "ecs:ListClusters",
                 "ecs:ListServices",
-                "ecs:ListTaskDefinitions",
-                "ecs:Get*",
-                "ecs:List*"
+                "ecs:ListTaskDefinitions"
             ],
             "Resource": "*"
         },
@@ -167,9 +109,7 @@
                 "ecr:PutImage",
                 "ecr:BatchGetImage",
                 "ecr:BatchCheckLayerAvailability",
-                "ecr:GetDownloadUrlForLayer",
-                "ecr:Get*",
-                "ecr:List*"
+                "ecr:GetDownloadUrlForLayer"
             ],
             "Resource": "*"
         },
@@ -186,7 +126,10 @@
                 "elasticloadbalancing:CreateTargetGroup",
                 "elasticloadbalancing:DeleteTargetGroup",
                 "elasticloadbalancing:Describe*",
-                "elasticloadbalancing:Get*"
+                "elasticloadbalancing:ModifyLoadBalancerAttributes",
+                "elasticloadbalancing:ModifyTargetGroup",
+                "elasticloadbalancing:ModifyTargetGroupAttributes",
+                "elasticloadbalancing:SetSecurityGroups"
             ],
             "Resource": "*"
         },
@@ -200,11 +143,58 @@
                 "iam:DeleteRolePolicy",
                 "iam:AttachRolePolicy",
                 "iam:DetachRolePolicy",
-                "iam:PassRole",
-                "iam:Get*",
-                "iam:List*"
+                "iam:PassRole"
             ],
             "Resource": "*"
+        },
+        {
+            "Sid": "KMSPermissions",
+            "Effect": "Allow",
+            "Action": [
+                "kms:CreateKey",
+                "kms:DescribeKey",
+                "kms:EnableKey",
+                "kms:DisableKey",
+                "kms:ScheduleKeyDeletion",
+                "kms:CreateAlias",
+                "kms:DeleteAlias",
+                "kms:UpdateAlias",
+                "kms:TagResource",
+                "kms:UntagResource",
+                "kms:PutKeyPolicy"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "CloudWatchLogsPermissions",
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents",
+                "logs:DeleteLogGroup",
+                "logs:PutResourcePolicy",
+                "logs:DeleteResourcePolicy"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "TerraformStateAccess",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:DeleteObject",
+                "s3:ListBucket",
+                "dynamodb:GetItem",
+                "dynamodb:PutItem",
+                "dynamodb:DeleteItem"
+            ],
+            "Resource": [
+                "arn:aws:s3:::jumads-hippo-terraform-state/*",
+                "arn:aws:s3:::jumads-hippo-terraform-state",
+                "arn:aws:dynamodb:*:*:table/terraform-state-lock"
+            ]
         }
     ]
 }

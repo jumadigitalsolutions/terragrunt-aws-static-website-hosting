@@ -60,15 +60,7 @@ The workflow integrates [**Checkov**](https://www.checkov.io/) for security scan
 
 ## 📂 Directory Structure
 ```
-.
-├── terragrunt/
-│   ├── live/
-│   │   ├── us-east-1/
-│   │   │   ├── dev/
-│   │   │   ├── prod/
-│   ├── modules/
-├── .github/workflows/
-│   ├── infra-s3-cloudfront.yml
+TODO: Update the directory structure
 ```
 
 ---

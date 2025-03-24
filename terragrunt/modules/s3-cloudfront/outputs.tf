@@ -1,11 +1,11 @@
 output "cloudfront_bucket_name" {
   description = "The name of the S3 bucket hosting the cloudfront"
-  value       = aws_s3_bucket.cloudfront.bucket
+  value       = zipmap(keys(aws_s3_bucket.cloudfront), values(aws_s3_bucket.cloudfront)[*].id) # zipmap may break if order of buckets changes
 }
 
 output "cloudfront_bucket_arn" {
   description = "The ARN of the S3 bucket hosting the cloudfront"
-  value       = aws_s3_bucket.cloudfront.arn
+  value       = { for k, v in aws_s3_bucket.cloudfront : k => v.arn } # This approach is more reliable as it doesn't depend on the order of the buckets
 }
 
 output "cloudfront_distribution_id" {
@@ -37,14 +37,4 @@ output "acm_certificate_validation_records" {
       type   = dvo.resource_record_type
     }
   }
-}
-
-output "route53_zone_id" {
-  description = "The ID of the Route53 hosted zone"
-  value       = var.route53_zone_id
-}
-
-output "route53_zone_name" {
-  description = "Name of the Route53 hosted zone"
-  value       = var.domain_name
 }

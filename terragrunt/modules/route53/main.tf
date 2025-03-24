@@ -22,6 +22,10 @@ data "aws_caller_identity" "current" {}
 
 # Configure DNSSEC if enabled
 resource "aws_kms_key" "dnssec_key" {
+  # DNSSEC signing requires a KMS key in us-east-1
+  # https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_hosted_zone_dnssec
+  provider = aws.us_east_1
+
   count = var.enable_dnssec ? 1 : 0
 
   customer_master_key_spec = "ECC_NIST_P256"
@@ -72,6 +76,8 @@ resource "aws_route53_hosted_zone_dnssec" "dnssec" {
   count = var.enable_dnssec ? 1 : 0
 
   hosted_zone_id = local.hosted_zone_id
+
+  signing_status = "SIGNING"
 }
 
 # Configure query logging if enabled
