@@ -51,6 +51,25 @@
 		{
 			"Effect": "Allow",
 			"Action": [
+				"kms:CreateKey",
+				"kms:DescribeKey",
+				"kms:GetPublicKey",
+				"kms:ScheduleKeyDeletion",
+				"kms:Sign",
+				"kms:TagResource",
+				"kms:UntagResource",
+				"kms:ListResourceTags"
+			],
+			"Resource": "*",
+			"Condition": {
+				"StringEquals": {
+					"kms:KeyUsage": "SIGN_VERIFY"
+				}
+			}
+		},
+		{
+			"Effect": "Allow",
+			"Action": [
 				"ec2:CreateVpc",
 				"ec2:DeleteVpc",
 				"ec2:DescribeVpcs",
