@@ -159,3 +159,33 @@ variable "s3_cors_rules" {
     max_age_seconds = 3000
   }]
 }
+
+variable "enable_wafv2" {
+  description = "Enable or disable WAFv2 creation and association"
+  type        = bool
+  default     = true # true unless specified in the env.tf files
+}
+
+variable "enable_wafv2_logs" {
+  description = "Enable or disable WAFv2 logging"
+  type        = bool
+  default     = false # false unless specified in the env.tf files
+}
+
+variable "waf_ip_set" {
+  description = "IP set for the WAFv2"
+  type        = list(string)
+  default     = []
+}
+
+variable "sns_alarm_topic_arn" {
+  description = "ARN of the SNS topic for CloudWatch alarms"
+  type        = string
+  default     = ""
+}
+
+variable "enable_response_headers_policy" {
+  description = "Whether to enable the response headers policy"
+  type        = bool
+  default     = true
+}

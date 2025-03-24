@@ -33,3 +33,7 @@ cors_rules:
     allowed_methods: ["GET", "PUT"]
     allowed_origins: ["*"]
     max_age_seconds: 3000
+enable_response_headers_policy: true
+enable_wafv2: true
+enable_wafv2_logs: true
+waf_ip_set: []
