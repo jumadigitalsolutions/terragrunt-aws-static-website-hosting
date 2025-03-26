@@ -174,7 +174,10 @@
             "Action": [
                 "s3:*"
             ],
-            "Resource": "arn:aws:s3:::jumads-hippo-terraform-state*"
+            "Resource": [
+                "arn:aws:s3:::jumads-hippo-terraform-state*",
+                "arn:aws:s3:::jumads-hippo-terraform-state*/*/.terragrunt-cache/*"
+            ]
         },
         {
             "Sid": "DynamoDBOperations",

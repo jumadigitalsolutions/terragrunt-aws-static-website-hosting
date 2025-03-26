@@ -4,6 +4,10 @@ description: 'Composite action to format, validate and check Terraform and Terra
 # Defines the inputs that can be passed to the action
 inputs: {}
 
+env:
+  tf_version: 1.6.1
+  tg_version: 0.55.1
+
 runs:
   using: "composite" # Allows creating reusable actions from a collection of other actions
   steps:

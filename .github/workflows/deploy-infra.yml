@@ -1,4 +1,4 @@
-name: Infrastructure - S3 CloudFront
+name: Infrastructure
 
 on:
   workflow_dispatch: # Allows manually triggering the workflow
@@ -68,6 +68,31 @@ jobs:
           tg_command: 'hclfmt --non-interactive --diff'
           tg_dir: terragrunt/live/
           
+      - uses: actions/cache@v4
+        name: Cache plugin dir
+        with:
+          path: |
+            ~/.tflint.d/plugins
+            ~/.terraform.d/plugin-cache
+            ~/.terragrunt-cache
+          key: tflint-${{ hashFiles('.tflint.hcl') }}
+  
+      - uses: terraform-linters/setup-tflint@v4
+        name: Setup TFLint
+        with:
+          tflint_version: v0.52.0
+      - name: Show version
+        run: tflint --version
+  
+      - name: Init TFLint
+        run: tflint --init
+        env:
+          # https://github.com/terraform-linters/tflint/blob/master/docs/user-guide/plugins.md#avoiding-rate-limiting
+          GITHUB_TOKEN: ${{ github.token }}
+  
+      - name: Run TFLint
+        run: tflint -f compact
+          
       - name: Run Checkov
         uses: bridgecrewio/checkov-action@v12
         with:
@@ -116,63 +141,63 @@ jobs:
         path: terragrunt/live/${{ env.AWS_REGION }}/dev/tfplan
         retention-days: 1
             
-    - uses: actions/github-script@v7
-      if: github.event_name == 'pull_request'
-      env:
-        PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        script: |
-          // 1. Retrieve existing bot comments for the PR
-          const { data: comments } = await github.rest.issues.listComments({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            issue_number: context.issue.number,
-          })
-          const botComment = comments.find(comment => {
-            return comment.user.type === 'Bot' && comment.body.includes('Terraform Format and Style')
-          })
+    # - uses: actions/github-script@v7
+    #   if: github.event_name == 'pull_request'
+    #   env:
+    #     PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
+    #   with:
+    #     github-token: ${{ secrets.GITHUB_TOKEN }}
+    #     script: |
+    #       // 1. Retrieve existing bot comments for the PR
+    #       const { data: comments } = await github.rest.issues.listComments({
+    #         owner: context.repo.owner,
+    #         repo: context.repo.repo,
+    #         issue_number: context.issue.number,
+    #       })
+    #       const botComment = comments.find(comment => {
+    #         return comment.user.type === 'Bot' && comment.body.includes('Terraform Format and Style')
+    #       })
 
-          // 2. Prepare format of the comment
-          const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
-          #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
-          #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
-          <details><summary>Validation Output</summary>
+    #       // 2. Prepare format of the comment
+    #       const output = `#### Terraform Format and Style 🖌\`${{ steps.fmt.outcome }}\`
+    #       #### Terraform Initialization ⚙️\`${{ steps.init.outcome }}\`
+    #       #### Terraform Validation 🤖\`${{ steps.validate.outcome }}\`
+    #       <details><summary>Validation Output</summary>
 
-          \`\`\`\n
-          ${{ steps.validate.outputs.stdout }}
-          \`\`\`
+    #       \`\`\`\n
+    #       ${{ steps.validate.outputs.stdout }}
+    #       \`\`\`
 
-          </details>
+    #       </details>
 
-          #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
+    #       #### Terraform Plan 📖\`${{ steps.plan.outcome }}\`
 
-          <details><summary>Show Plan</summary>
+    #       <details><summary>Show Plan</summary>
 
-          \`\`\`\n
-          ${process.env.PLAN}
-          \`\`\`
+    #       \`\`\`\n
+    #       ${process.env.PLAN}
+    #       \`\`\`
 
-          </details>
+    #       </details>
 
-          *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Environment: \`${{ env.ENVIRONMENT }}\`*`;
+    #       *Pusher: @${{ github.actor }}, Action: \`${{ github.event_name }}\`, Environment: \`${{ env.ENVIRONMENT }}\`*`;
 
-          // 3. If we have a comment, update it, otherwise create a new one
-          if (botComment) {
-            github.rest.issues.updateComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: botComment.id,
-              body: output
-            })
-          } else {
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: output
-            })
-          }
+    #       // 3. If we have a comment, update it, otherwise create a new one
+    #       if (botComment) {
+    #         github.rest.issues.updateComment({
+    #           owner: context.repo.owner,
+    #           repo: context.repo.repo,
+    #           comment_id: botComment.id,
+    #           body: output
+    #         })
+    #       } else {
+    #         github.rest.issues.createComment({
+    #           issue_number: context.issue.number,
+    #           owner: context.repo.owner,
+    #           repo: context.repo.repo,
+    #           body: output
+    #         })
+    #       }
 
   # Apply DEV infrastructure changes
   apply-dev:

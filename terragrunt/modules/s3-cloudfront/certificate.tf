@@ -17,6 +17,7 @@ resource "aws_acm_certificate" "cloudfront" {
   }
 }
 
+# Route53 Record for ACM Certificate Validation
 resource "aws_route53_record" "cert_validation" {
   for_each = {
     for dvo in aws_acm_certificate.cloudfront.domain_validation_options : dvo.domain_name => {
@@ -33,6 +34,7 @@ resource "aws_route53_record" "cert_validation" {
   ttl     = 60
 }
 
+# ACM Certificate Validation
 resource "aws_acm_certificate_validation" "cloudfront" {
   provider                = aws.us_east_1 # CloudFront requires certificates in us-east-1
   certificate_arn         = aws_acm_certificate.cloudfront.arn
