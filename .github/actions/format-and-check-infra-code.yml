@@ -1,0 +1,75 @@
+name: 'Format, Validate and Check Terraform and Terragrunt Code'
+description: 'Composite action to format, validate and check Terraform and Terragrunt code'
+
+# Defines the inputs that can be passed to the action
+inputs: {}
+
+env:
+  tf_version: 1.6.1
+  tg_version: 0.55.1
+
+runs:
+  using: "composite" # Allows creating reusable actions from a collection of other actions
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - uses: actions/cache@v4
+      name: Cache plugin dir
+      with:
+        path: ~/.tflint.d/plugins
+        key: ${{ matrix.os }}-tflint-${{ hashFiles('.tflint.hcl') }}
+
+    - uses: terraform-linters/setup-tflint@v4
+      name: Setup TFLint
+      with:
+        tflint_version: latest
+
+    - name: Show version
+      run: tflint --version
+
+    - name: Init TFLint
+      run: tflint --init
+      env:
+        # https://github.com/terraform-linters/tflint/blob/master/docs/user-guide/plugins.md#avoiding-rate-limiting
+        GITHUB_TOKEN: ${{ github.token }}
+
+    - name: Run TFLint
+      run: tflint -f compact
+
+    - name: Checkout
+      uses: actions/checkout@v4
+    # Setup Terraform
+    - uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.tf_version }}
+
+    # Format Terraform files into canonical HCL format
+    - name: Format and Validate Terraform Files
+      run: |
+        terraform fmt -recursive -diff terragrunt/modules/
+          terraform validate terragrunt/modules/
+        
+    # Format Terragrunt files into canonical HCL format
+    - name: Format Terragrunt Files
+      uses: gruntwork-io/terragrunt-action@v2
+      with:
+        tf_version: ${{ env.tf_version }}
+        tg_version: ${{ env.tg_version }}
+        tg_command: 'hclfmt --non-interactive --diff'
+        tg_dir: terragrunt/live/
+        
+    - name: Run Checkov
+      uses: bridgecrewio/checkov-action@v12
+      with:
+        directory: terragrunt/modules/
+        quiet: true
+        output_format: cli,sarif
+        output_file_path: console,checkov-results.sarif
+        soft_fail: true
+
+    - name: Upload SARIF file
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: checkov-results.sarif
+        wait-for-processing: true

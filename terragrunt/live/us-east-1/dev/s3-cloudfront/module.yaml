@@ -11,8 +11,29 @@ cors_allowed_methods:
   - "HEAD"
 cors_max_age_seconds: 3600 
 domain: "jumads.com"
+domain_name: "jumads.com"
 # DNS and certificate configuration
 acm_certificate_domain: ""  # Leave empty to use *.jumads.com as default
+# DNSSEC and Query Logging
+enable_dnssec: true
+enable_query_logging: true
+query_log_retention_days: 14
 bucket_tags:
   Purpose: "static-website"
-  Tier: "public"
+Tier: "public"
+enable_s3_bucket_notifications: true
+enable_s3_bucket_server_side_encryption: true
+enable_versioning: true
+enable_logging: true
+s3_bucket_private: false
+enable_lifecycle_configuration: true
+enable_cross_region_replication: true
+cors_rules:
+  - allowed_headers: ["*"]
+    allowed_methods: ["GET", "PUT"]
+    allowed_origins: ["*"]
+    max_age_seconds: 3000
+enable_response_headers_policy: true
+enable_wafv2: true
+enable_wafv2_logs: true
+waf_ip_set: []

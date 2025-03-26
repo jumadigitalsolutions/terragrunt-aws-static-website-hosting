@@ -1,0 +1,6 @@
+# Route53 configuration for dev environment
+domain_name: "jumads.com"
+use_existing_hosted_zone: true
+enable_dnssec: true
+enable_query_logging: true
+query_log_retention_days: 14 

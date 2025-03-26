@@ -4,4 +4,9 @@ task_memory: 512
 service_desired_count: 2
 image_tag: "latest"
 domain: "jumads.com"
+domain_name: "jumads.com"
 acm_certificate_domain: ""  # Leave empty to use *.jumads.com as default
+# DNSSEC and Query Logging
+enable_dnssec: true
+enable_query_logging: true
+query_log_retention_days: 14

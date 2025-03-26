@@ -127,6 +127,16 @@ terragrunt/
 - Route53 DNS records
 - ACM certificate for HTTPS
 
+#### Route53 Module
+
+We now use a dedicated Route53 module that handles:
+- Hosted zone creation/management
+- DNSSEC configuration
+- Query logging with S3 storage
+- Lifecycle management for query logs
+
+This module can be used by other modules that need DNS functionality, reducing duplication and ensuring consistent configuration.
+
 ## Security Considerations
 
 1. **IAM Best Practices**:

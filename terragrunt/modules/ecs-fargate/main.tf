@@ -1,7 +1,7 @@
 # Creates an ECR repository for the hippo website
 resource "aws_ecr_repository" "hippo" {
   name                 = "hippo-website-${var.environment}"
-  image_tag_mutability = "MUTABLE"
+  image_tag_mutability = "IMMUTABLE"
 
   image_scanning_configuration {
     scan_on_push = true
@@ -259,8 +259,8 @@ resource "aws_lb_listener" "https" {
 
 # Create Route53 DNS record pointing to the ALB
 resource "aws_route53_record" "ecs" {
-  zone_id = data.aws_route53_zone.jumads.zone_id
-  name    = "hippo-website-ecs-${var.environment}.${var.domain}"
+  zone_id = var.route53_zone_id
+  name    = "hippo-website-ecs-${var.environment}.${var.domain_name}"
   type    = "A"
 
   alias {
@@ -270,16 +270,10 @@ resource "aws_route53_record" "ecs" {
   }
 }
 
-# Setup DNS for the ECS service
-# Use an existing Route53 hosted zone instead of creating a new one
-data "aws_route53_zone" "jumads" {
-  name = var.domain
-}
-
 # Create ACM certificate for the ECS service
 resource "aws_acm_certificate" "ecs" {
-  domain_name               = coalesce(var.acm_certificate_domain, "*.${var.domain}")
-  subject_alternative_names = ["hippo-website-ecs-${var.environment}.${var.domain}"]
+  domain_name               = coalesce(var.acm_certificate_domain, "*.${var.domain_name}")
+  subject_alternative_names = ["hippo-website-ecs-${var.environment}.${var.domain_name}"]
   validation_method         = "DNS"
 
   tags = var.tags
@@ -299,7 +293,7 @@ resource "aws_route53_record" "cert_validation" {
     }
   }
 
-  zone_id = data.aws_route53_zone.jumads.zone_id
+  zone_id = var.route53_zone_id
   name    = each.value.name
   type    = each.value.type
   records = [each.value.record]

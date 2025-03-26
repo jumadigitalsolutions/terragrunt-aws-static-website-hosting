@@ -13,7 +13,6 @@
 				"s3:CreateBucket",
 				"s3:DeleteBucket",
 				"s3:PutBucketVersioning",
-				"s3:PutBucketConfiguration",
 				"s3:GetBucketVersioning",
 				"s3:GetEncryptionConfiguration",
 				"s3:PutBucketPublicAccessBlock",
@@ -47,6 +46,25 @@
 				"kms:DescribeKey"
 			],
 			"Resource": "arn:aws:kms:us-east-1:626146856453:alias/aws/s3"
+		},
+		{
+			"Effect": "Allow",
+			"Action": [
+				"kms:CreateKey",
+				"kms:DescribeKey",
+				"kms:GetPublicKey",
+				"kms:ScheduleKeyDeletion",
+				"kms:Sign",
+				"kms:TagResource",
+				"kms:UntagResource",
+				"kms:ListResourceTags"
+			],
+			"Resource": "*",
+			"Condition": {
+				"StringEquals": {
+					"kms:KeyUsage": "SIGN_VERIFY"
+				}
+			}
 		},
 		{
 			"Effect": "Allow",
